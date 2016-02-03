@@ -11,8 +11,8 @@
 #include <zlib.h>
 #include <iostream>
 #include <fstream>
-#include <boost/asio/detail/socket_ops.hpp>
 #include <pion/spdy/decompressor.hpp>
+#include <pion/utils/pion_assert.hpp>
 
 
 namespace pion {    // begin namespace pion
@@ -43,7 +43,7 @@ decompressor::decompressor()
     : m_request_zstream(NULL), m_response_zstream(NULL)
 {
     m_request_zstream = (z_streamp)malloc(sizeof(z_stream));
-    BOOST_ASSERT(m_request_zstream);
+    PION_ASSERT(m_request_zstream);
 
     m_request_zstream->zalloc = Z_NULL;
     m_request_zstream->zfree = Z_NULL;
@@ -54,7 +54,7 @@ decompressor::decompressor()
     m_request_zstream->avail_out = 0;
     
     m_response_zstream = (z_streamp)malloc(sizeof(z_stream));
-    BOOST_ASSERT(m_response_zstream);
+    PION_ASSERT(m_response_zstream);
     
     m_response_zstream->zalloc = Z_NULL;
     m_response_zstream->zfree = Z_NULL;
@@ -87,9 +87,9 @@ decompressor::~decompressor()
 }
 
 char* decompressor::decompress(const char *compressed_data_ptr,
-                               boost::uint32_t stream_id,
+                               pion::uint32_t stream_id,
                                const spdy_control_frame_info& frame,
-                               boost::uint32_t header_block_length)
+                               pion::uint32_t header_block_length)
 {
     /// Get our decompressor.
     z_streamp decomp = NULL;
@@ -108,12 +108,12 @@ char* decompressor::decompress(const char *compressed_data_ptr,
         decomp = m_response_zstream;
     } else {
         // Unhandled case. This should never happen.
-        BOOST_ASSERT(false);
+        PION_ASSERT(false);
     }
-    BOOST_ASSERT(decomp);
+    PION_ASSERT(decomp);
     
     // Decompress the data
-    boost::uint32_t uncomp_length = 0;
+    pion::uint32_t uncomp_length = 0;
     
     // Catch decompression failures.
     if (!spdy_decompress_header(compressed_data_ptr, decomp,
@@ -130,10 +130,10 @@ char* decompressor::decompress(const char *compressed_data_ptr,
 
 bool decompressor::spdy_decompress_header(const char *compressed_data_ptr,
                                           z_streamp decomp,
-                                          boost::uint32_t length,
-                                          boost::uint32_t& uncomp_length) {
+                                          pion::uint32_t length,
+                                          pion::uint32_t& uncomp_length) {
     int retcode;
-    const boost::uint8_t *hptr = (boost::uint8_t *)compressed_data_ptr;
+    const pion::uint8_t *hptr = (pion::uint8_t *)compressed_data_ptr;
     
     decomp->next_in = (Bytef *)hptr;
     decomp->avail_in = length;

@@ -10,15 +10,13 @@
 #ifndef __PION_USER_HEADER__
 #define __PION_USER_HEADER__
 
+#include <pion/config.hpp>
 #include <map>
 #include <string>
 #include <cstdio>
 #include <cstring>
-#include <boost/shared_ptr.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/numeric/conversion/cast.hpp>
-#include <pion/config.hpp>
+#include <pion/utils/pion_memory.hpp>
+#include <pion/utils/pion_mutex.hpp>
 #include <pion/error.hpp>
 
 #ifdef PION_HAVE_SSL
@@ -37,7 +35,7 @@ namespace pion {    // begin namespace pion
 /// user: base class to store user credentials
 ///
 class user :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 public:
 
@@ -118,7 +116,7 @@ public:
         } else if (password_hash.size() == SHA_DIGEST_LENGTH * 2) {
             m_password_hash_type = SHA_1;
         } else {
-            BOOST_THROW_EXCEPTION( error::bad_password_hash() );
+            PION_THROW_EXCEPTION( error::bad_password_hash() );
         }
         m_password = password_hash;
 
@@ -132,7 +130,10 @@ public:
             ++str_it;
             buf[1] = *str_it;
             ++str_it;
-            m_password_hash[hash_pos++] = boost::numeric_cast<unsigned char>(strtoul(buf, 0, 16));
+			unsigned long v = strtoul(buf, 0, 16);
+			if ( v > std::numeric_limits<unsigned char>::max() )
+				throw std::out_of_range( "bad numeric cast" );
+            m_password_hash[hash_pos++] = (unsigned char)v;
         }
     }
 #endif
@@ -158,14 +159,14 @@ protected:
 };
 
 /// data type for a user  pointer
-typedef boost::shared_ptr<user> user_ptr;
+typedef pion::shared_ptr<user> user_ptr;
 
 
 ///
 /// user_manager base class for user container/manager
 ///
 class user_manager :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 public:
 
@@ -177,7 +178,7 @@ public:
 
     /// returns true if no users are defined
     inline bool empty(void) const {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         return m_users.empty();
     }
 
@@ -192,7 +193,7 @@ public:
     virtual bool add_user(const std::string &username,
         const std::string &password)
     {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i!=m_users.end())
             return false;
@@ -212,7 +213,7 @@ public:
     virtual bool update_user(const std::string &username,
         const std::string &password)
     {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i==m_users.end())
             return false;
@@ -232,7 +233,7 @@ public:
     virtual bool add_user_hash(const std::string &username,
         const std::string &password_hash)
     {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i!=m_users.end())
             return false;
@@ -253,7 +254,7 @@ public:
     virtual bool update_user_hash(const std::string &username,
         const std::string &password_hash)
     {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i==m_users.end())
             return false;
@@ -268,7 +269,7 @@ public:
      * @return false if no user with such username
      */
     virtual bool remove_user(const std::string &username) {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i==m_users.end())
             return false;
@@ -280,7 +281,7 @@ public:
      * Used to locate user object by username
      */
     virtual user_ptr get_user(const std::string &username) {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::const_iterator i = m_users.find(username);
         if (i==m_users.end())
             return user_ptr();
@@ -292,7 +293,7 @@ public:
      * Used to locate user object by username and password
      */
     virtual user_ptr get_user(const std::string& username, const std::string& password) {
-        boost::mutex::scoped_lock lock(m_mutex);
+        pion::unique_lock<pion::mutex> lock(m_mutex);
         user_map_t::const_iterator i = m_users.find(username);
         if (i==m_users.end() || !i->second->match_password(password))
             return user_ptr();
@@ -308,14 +309,14 @@ protected:
 
 
     /// mutex used to protect access to the user list
-    mutable boost::mutex    m_mutex;
+    mutable pion::mutex    m_mutex;
 
     /// user records container
     user_map_t              m_users;
 };
 
 /// data type for a user_manager pointer
-typedef boost::shared_ptr<user_manager>  user_manager_ptr;
+typedef pion::shared_ptr<user_manager>  user_manager_ptr;
 
 
 }   // end namespace pion

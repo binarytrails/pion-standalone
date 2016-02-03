@@ -10,15 +10,12 @@
 #ifndef __PION_HTTP_WRITER_HEADER__
 #define __PION_HTTP_WRITER_HEADER__
 
+#include <pion/config.hpp>
 #include <vector>
 #include <string>
-#include <boost/shared_ptr.hpp>
-#include <boost/function.hpp>
-#include <boost/function/function0.hpp>
-#include <boost/function/function2.hpp>
-#include <boost/asio.hpp>
-#include <boost/noncopyable.hpp>
-#include <pion/config.hpp>
+#include <pion/utils/pion_memory.hpp>
+#include <pion/utils/pion_functional.hpp>
+#include <pion/utils/pion_asio.hpp>
 #include <pion/logger.hpp>
 #include <pion/tcp/connection.hpp>
 #include <pion/http/message.hpp>
@@ -32,15 +29,15 @@ namespace http {    // begin namespace http
 /// writer: used to asynchronously send HTTP messages
 /// 
 class PION_API writer :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 protected:
     
     /// function called after the HTTP message has been sent
-    typedef boost::function1<void,const boost::system::error_code&> finished_handler_t;
+    typedef pion::function<void (const pion::error_code&)> finished_handler_t;
 
     /// data type for a function that handles write operations
-    typedef boost::function2<void,const boost::system::error_code&,std::size_t> write_handler_t;
+    typedef pion::function<void (const pion::error_code&,std::size_t)> write_handler_t;
     
     
     /**
@@ -62,7 +59,7 @@ protected:
      * @param write_error error status from the last write operation
      * @param bytes_written number of bytes sent by the last write operation
      */
-    virtual void handle_write(const boost::system::error_code& write_error,
+    virtual void handle_write(const pion::error_code& write_error,
                               std::size_t bytes_written) = 0;
 
     
@@ -77,7 +74,7 @@ protected:
     virtual write_handler_t bind_to_write_handler(void) = 0;
     
     /// called after we have finished sending the HTTP message
-    inline void finished_writing(const boost::system::error_code& ec) {
+    inline void finished_writing(const pion::error_code& ec) {
         if (m_finished) m_finished(ec);
     }
     
@@ -137,7 +134,7 @@ public:
     inline void write_no_copy(const std::string& data) {
         if (! data.empty()) {
             flush_content_stream();
-            m_content_buffers.push_back(boost::asio::buffer(data));
+            m_content_buffers.push_back(pion::asio::buffer(data));
             m_content_length += data.size();
         }
     }
@@ -152,7 +149,7 @@ public:
     inline void write_no_copy(void *data, size_t length) {
         if (length > 0) {
             flush_content_stream();
-            m_content_buffers.push_back(boost::asio::buffer(data, length));
+            m_content_buffers.push_back(pion::asio::buffer(data, length));
             m_content_length += length;
         }
     }
@@ -276,7 +273,7 @@ private:
             // send data in the write buffers
             m_tcp_conn->async_write(write_buffers, send_handler);
         } else {
-            finished_writing(boost::asio::error::connection_reset);
+            finished_writing(pion::asio::error::connection_reset);
         }
     }
     
@@ -297,7 +294,7 @@ private:
                 m_content_stream.str("");
                 m_content_length += string_to_add.size();
                 m_text_cache.push_back(string_to_add);
-                m_content_buffers.push_back(boost::asio::buffer(m_text_cache.back()));
+                m_content_buffers.push_back(pion::asio::buffer(m_text_cache.back()));
             }
             m_stream_is_empty = true;
         }
@@ -312,11 +309,11 @@ private:
                 delete[] i->first;
             }
         }
-        inline boost::asio::const_buffer add(const void *ptr, const size_t size) {
+        inline pion::asio::const_buffer add(const void *ptr, const size_t size) {
             char *data_ptr = new char[size];
             memcpy(data_ptr, ptr, size);
             push_back( std::make_pair(data_ptr, size) );
-            return boost::asio::buffer(data_ptr, size);
+            return pion::asio::buffer(data_ptr, size);
         }
     };
     
@@ -363,7 +360,7 @@ private:
 
 
 /// data type for a writer pointer
-typedef boost::shared_ptr<writer>   writer_ptr;
+typedef pion::shared_ptr<writer>   writer_ptr;
 
 
 /// override operator<< for convenience

@@ -10,27 +10,11 @@
 #ifndef __PION_ERROR_HEADER__
 #define __PION_ERROR_HEADER__
 
+#include <pion/config.hpp>
 #include <string>
 #include <sstream>
 #include <exception>
-#include <boost/version.hpp>
-#include <boost/throw_exception.hpp>
-#include <boost/exception/exception.hpp>
-#include <boost/exception/info.hpp>
-#include <boost/exception/error_info.hpp>
-#include <boost/exception/get_error_info.hpp>
-#if BOOST_VERSION >= 104700
-    // #pragma diagnostic is only supported by GCC >= 4.2.1
-    #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 2) || (__GNUC__ == 4 && __GNUC_MINOR__ == 2 && __GNUC_PATCHLEVEL__ >= 1)
-        #pragma GCC diagnostic ignored "-Wunused-parameter"
-        #include <boost/units/io.hpp>
-        #pragma GCC diagnostic warning "-Wunused-parameter"
-    #else
-        #include <boost/units/io.hpp>
-    #endif
-#endif // BOOST_VERSION
-#include <pion/config.hpp>
-
+#include <pion/utils/pion_exception.hpp>
 
 namespace pion {    // begin namespace pion
 
@@ -39,7 +23,7 @@ namespace pion {    // begin namespace pion
     // strings with more descriptive messages and optionally arguments as well
     //
     class exception
-        : public virtual std::exception, public virtual boost::exception
+        : public virtual std::exception, public virtual pion::exception_base
     {
     public:
         exception() {}
@@ -53,11 +37,7 @@ namespace pion {    // begin namespace pion
     protected:
         inline void set_what_msg(const char * const msg = NULL, const std::string * const arg1 = NULL, const std::string * const arg2 = NULL, const std::string * const arg3 = NULL) const {
             std::ostringstream tmp;
-#if BOOST_VERSION >= 104700
             tmp << ( msg ? msg : boost::units::detail::demangle(BOOST_EXCEPTION_DYNAMIC_TYPEID(*this).type_->name()) );
-#else
-            tmp << ( msg ? msg : boost::units::detail::demangle(BOOST_EXCEPTION_DYNAMIC_TYPEID(*this).type_.name()) );
-#endif
             if (arg1 || arg2 || arg3) tmp << ':';
             if (arg1) tmp << ' ' << *arg1;
             if (arg2) tmp << ' ' << *arg2;
@@ -79,25 +59,21 @@ namespace pion {    // begin namespace pion
     static inline std::string
     diagnostic_information( T const & e )
     {
-        boost::exception const * const be = dynamic_cast<const boost::exception*>(&e);
+        pion::exception_base const * const be = dynamic_cast<const pion::exception_base*>(&e);
         std::exception const * const se = dynamic_cast<const std::exception*>(&e);
         std::ostringstream tmp;
         if (se) {
             tmp << se->what();
         } else {
-#if BOOST_VERSION >= 104700
             tmp << boost::units::detail::demangle(BOOST_EXCEPTION_DYNAMIC_TYPEID(e).type_->name());
-#else
-            tmp << boost::units::detail::demangle(BOOST_EXCEPTION_DYNAMIC_TYPEID(e).type_.name());
-#endif
         }
         if (be) {
-            //char const * const * fn=boost::get_error_info<boost::throw_function>(*be);
+            //char const * const * fn=pion::get_error_info<pion::throw_function>(*be);
             //if (fn) tmp << " at " << *fn;
-            char const * const * f=boost::get_error_info<boost::throw_file>(*be);
+            char const * const * f=pion::get_error_info<pion::throw_file>(*be);
             if (f) {
                 tmp << " [" << *f;
-                if (int const * l=boost::get_error_info<boost::throw_line>(*be))
+                if (int const * l=pion::get_error_info<pion::throw_line>(*be))
                     tmp << ':' << *l;
                 tmp << "]";
             }
@@ -113,22 +89,22 @@ namespace pion {    // begin namespace pion
         //
         
         /// generic error message
-        typedef boost::error_info<struct errinfo_arg_name_,std::string> errinfo_message;
+        typedef pion::error_info<struct errinfo_arg_name_,std::string> errinfo_message;
         
         /// name of an unrecognized configuration argument or option
-        typedef boost::error_info<struct errinfo_arg_name_,std::string> errinfo_arg_name;
+        typedef pion::error_info<struct errinfo_arg_name_,std::string> errinfo_arg_name;
         
         /// file name/path
-        typedef boost::error_info<struct errinfo_file_name_,std::string> errinfo_file_name;
+        typedef pion::error_info<struct errinfo_file_name_,std::string> errinfo_file_name;
         
         /// directory name/path
-        typedef boost::error_info<struct errinfo_dir_name_,std::string> errinfo_dir_name;
+        typedef pion::error_info<struct errinfo_dir_name_,std::string> errinfo_dir_name;
         
         /// plugin identifier
-        typedef boost::error_info<struct errinfo_plugin_name_,std::string> errinfo_plugin_name;
+        typedef pion::error_info<struct errinfo_plugin_name_,std::string> errinfo_plugin_name;
         
         /// plugin symbol name
-        typedef boost::error_info<struct errinfo_dir_name_,std::string> errinfo_symbol_name;
+        typedef pion::error_info<struct errinfo_dir_name_,std::string> errinfo_symbol_name;
 
         
         //
@@ -138,70 +114,70 @@ namespace pion {    // begin namespace pion
         /// exception thrown for an invalid configuration argument or option
         class bad_arg : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("bad argument", boost::get_error_info<errinfo_arg_name>(*this));
+                set_what_msg("bad argument", pion::get_error_info<errinfo_arg_name>(*this));
             }
         };
         
         /// exception thrown if there is an error parsing a configuration file
         class bad_config : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("config parser error", boost::get_error_info<errinfo_file_name>(*this));
+                set_what_msg("config parser error", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
         
         /// exception thrown if we failed to open a file
         class open_file : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("unable to open file", boost::get_error_info<errinfo_file_name>(*this));
+                set_what_msg("unable to open file", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
         
         /// exception thrown if we are unable to open a plugin
         class open_plugin : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("unable to open plugin", boost::get_error_info<errinfo_plugin_name>(*this));
+                set_what_msg("unable to open plugin", pion::get_error_info<errinfo_plugin_name>(*this));
             }
         };
         
         /// exception thrown if we failed to read data from a file
         class read_file : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("unable to read file", boost::get_error_info<errinfo_file_name>(*this));
+                set_what_msg("unable to read file", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
         
         /// exception thrown if a file is not found
         class file_not_found : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("file not found", boost::get_error_info<errinfo_file_name>(*this));
+                set_what_msg("file not found", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
         
         /// exception thrown if a required directory is not found
         class directory_not_found : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("directory not found", boost::get_error_info<errinfo_dir_name>(*this));
+                set_what_msg("directory not found", pion::get_error_info<errinfo_dir_name>(*this));
             }
         };
 
         /// exception thrown if a plugin cannot be found
         class plugin_not_found : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("plugin not found", boost::get_error_info<errinfo_plugin_name>(*this));
+                set_what_msg("plugin not found", pion::get_error_info<errinfo_plugin_name>(*this));
             }
         };
         
         /// exception thrown if we try to add or load a duplicate plugin
         class duplicate_plugin : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("duplicate plugin", boost::get_error_info<errinfo_plugin_name>(*this));
+                set_what_msg("duplicate plugin", pion::get_error_info<errinfo_plugin_name>(*this));
             }
         };
 
         /// exception thrown if a plugin is missing a required symbol
         class plugin_missing_symbol : public pion::exception {
             virtual void update_what_msg() const {
-                set_what_msg("missing plugin symbol", boost::get_error_info<errinfo_symbol_name>(*this));
+                set_what_msg("missing plugin symbol", pion::get_error_info<errinfo_symbol_name>(*this));
             }
         };
       

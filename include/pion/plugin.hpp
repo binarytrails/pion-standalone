@@ -10,15 +10,14 @@
 #ifndef __PION_PLUGIN_HEADER__
 #define __PION_PLUGIN_HEADER__
 
+#include <pion/config.hpp>
 #include <vector>
 #include <string>
 #include <map>
 #include <list>
-#include <boost/noncopyable.hpp>
-#include <boost/thread/once.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/filesystem/path.hpp>
-#include <pion/config.hpp>
+#include <pion/utils/pion_memory.hpp>
+#include <pion/utils/pion_mutex.hpp>
+#include <pion/utils/pion_filesystem.hpp>
 #include <pion/error.hpp>
 
 
@@ -76,7 +75,7 @@ public:
      *                   this will be appended to PION_CYGWIN_DIRECTORY to attempt
      *                   attempt correction of final_path for cygwin
      */
-    static void check_cygwin_path(boost::filesystem::path& final_path,
+    static void check_cygwin_path(pion::filesystem::path& final_path,
                                 const std::string& path_string);
 
     /// appends a directory to the plug-in search path
@@ -210,13 +209,13 @@ private:
         map_type                    m_plugin_map;
         
         /// mutex to make class thread-safe
-        boost::mutex                m_plugin_mutex;
+        pion::mutex                m_plugin_mutex;
     };
 
     
     /// returns a singleton instance of config_type
     static inline config_type& get_plugin_config(void) {
-        boost::call_once(plugin::create_plugin_config, m_instance_flag);
+        pion::call_once(m_instance_flag, plugin::create_plugin_config);
         return *m_config_ptr;
     }
     
@@ -283,7 +282,7 @@ private:
     static const std::string            PION_CONFIG_EXTENSION;
     
     /// used to ensure thread safety of the plugin_config singleton
-    static boost::once_flag             m_instance_flag;
+    static pion::once_flag             m_instance_flag;
 
     /// pointer to the plugin_config singleton
     static config_type *           m_config_ptr;
@@ -327,7 +326,7 @@ public:
         CreateObjectFunction *create_func =
             (CreateObjectFunction*)(get_create_function());
         if (create_func == NULL)
-            BOOST_THROW_EXCEPTION( error::plugin_undefined() );
+            PION_THROW_EXCEPTION( error::plugin_undefined() );
         return create_func();
     }
     
@@ -342,7 +341,7 @@ public:
         Cast.v_ = get_destroy_function();
         DestroyObjectFunction *destroy_func = Cast.f_;
         if (destroy_func == NULL)
-            BOOST_THROW_EXCEPTION( error::plugin_undefined() );
+            PION_THROW_EXCEPTION( error::plugin_undefined() );
         destroy_func(object_ptr);
     }
 };
@@ -353,7 +352,7 @@ public:
 ///
 template <typename InterfaceClassType>
 class plugin_instance_ptr :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 public:
 

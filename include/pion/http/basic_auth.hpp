@@ -10,9 +10,9 @@
 #ifndef __PION_HTTP_BASIC_AUTH_HEADER__
 #define __PION_HTTP_BASIC_AUTH_HEADER__
 
+#include <pion/config.hpp>
 #include <map>
 #include <string>
-#include <pion/config.hpp>
 #include <pion/http/auth.hpp>
 
 
@@ -92,13 +92,13 @@ private:
     std::string                 m_realm; 
 
     /// time of the last cache clean up
-    boost::posix_time::ptime    m_cache_cleanup_time;
+    pion::chrono::system_clock::time_point    m_cache_cleanup_time;
         
     /// cache of users that are currently active
     user_cache_type             m_user_cache;
     
     /// mutex used to protect access to the user cache
-    mutable boost::mutex        m_cache_mutex;
+    mutable pion::mutex        m_cache_mutex;
 };
 
     

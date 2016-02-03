@@ -10,8 +10,8 @@
 #ifndef __PION_HTTP_TYPES_HEADER__
 #define __PION_HTTP_TYPES_HEADER__
 
-#include <string>
 #include <pion/config.hpp>
+#include <string>
 #include <pion/hash_map.hpp>
 
 

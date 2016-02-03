@@ -10,16 +10,18 @@
 #ifndef __PION_SPDYPARSER_HEADER__
 #define __PION_SPDYPARSER_HEADER__
 
-
-#include <boost/shared_ptr.hpp>
-#include <boost/logic/tribool.hpp>
-#include <boost/system/error_code.hpp>
-#include <boost/thread/once.hpp>
 #include <pion/config.hpp>
+#include <pion/utils/pion_memory.hpp>
+#include <pion/utils/pion_tribool.hpp>
+#include <pion/utils/pion_system_error.hpp>
+#include <pion/utils/pion_mutex.hpp>
 #include <pion/logger.hpp>
 #include <pion/spdy/types.hpp>
 #include <pion/spdy/decompressor.hpp>
 
+#ifdef ASIO_STANDALONE
+	#define BOOST_SYSTEM_NOEXCEPT noexcept
+#else
 #ifndef BOOST_SYSTEM_NOEXCEPT
     #ifndef BOOST_NOEXCEPT
         #define BOOST_SYSTEM_NOEXCEPT
@@ -27,7 +29,7 @@
         #define BOOST_SYSTEM_NOEXCEPT BOOST_NOEXCEPT
     #endif
 #endif
-
+#endif
 
 namespace pion {    // begin namespace pion
 namespace spdy {    // begin namespace spdy
@@ -53,7 +55,7 @@ public:
     
     /// class-specific error category
     class error_category_t
-        : public boost::system::error_category
+        : public pion::error_category
     {
     public:
         const char *name() const BOOST_SYSTEM_NOEXCEPT { return "SPDYParser"; }
@@ -82,17 +84,17 @@ public:
     /**
      * parse a SPDY packet
      *
-     * @return boost::tribool result of parsing:
+     * @return pion::tribool result of parsing:
      *                        false = SPDY frame has an error,
      *                        true = finished parsing SPDY frame,
      *                        indeterminate = not yet finished parsing SPDY frame
      */
-    boost::tribool parse(http_protocol_info& http_headers,
-                         boost::system::error_code& ec,
+    pion::tribool parse(http_protocol_info& http_headers,
+                         pion::error_code& ec,
                          const decompressor_ptr& decompressor,
                          const char *packet_ptr,
-                         boost::uint32_t& length_packet,
-                         boost::uint32_t current_stream_count);
+                         pion::uint32_t& length_packet,
+                         pion::uint32_t current_stream_count);
     
     /// Get the pointer to the first character to the spdy data contect 
     const char * get_spdy_data_content( ) { return m_last_data_chunk_ptr; }
@@ -119,7 +121,7 @@ public:
      *
      * @return true if it is a control frame else returns false
      */
-    static boost::uint32_t get_control_frame_stream_id(const char *ptr);
+    static pion::uint32_t get_control_frame_stream_id(const char *ptr);
     
     
 protected:
@@ -129,10 +131,10 @@ protected:
     
     /// populates the frame for every spdy packet
     /// Returns false if there was an error else returns true
-    bool populate_frame(boost::system::error_code& ec,
+    bool populate_frame(pion::error_code& ec,
                         spdy_control_frame_info& frame,
-                        boost::uint32_t& length_packet,
-                        boost::uint32_t& stream_id,
+                        pion::uint32_t& length_packet,
+                        pion::uint32_t& stream_id,
                         http_protocol_info& http_headers);
     
     /// creates the unique parser error_category_t
@@ -140,7 +142,7 @@ protected:
     
     /// returns an instance of parser::error_category_t
     static inline error_category_t& get_error_category(void) {
-        boost::call_once(parser::create_error_category, m_instance_flag);
+        pion::call_once(m_instance_flag, parser::create_error_category);
         return *m_error_category_ptr;
     }
 
@@ -150,77 +152,77 @@ protected:
      * @param ec error code variable to define
      * @param ev error value to raise
      */
-    static inline void set_error(boost::system::error_code& ec, error_value_t ev) {
-        ec = boost::system::error_code(static_cast<int>(ev), get_error_category());
+    static inline void set_error(pion::error_code& ec, error_value_t ev) {
+        ec = pion::error_code(static_cast<int>(ev), get_error_category());
     }
     
     /**
      * parses an the header payload for SPDY
      *
      */
-    void parse_header_payload(boost::system::error_code& ec,
+    void parse_header_payload(pion::error_code& ec,
                               const decompressor_ptr& decompressor,
                               const spdy_control_frame_info& frame,
                               http_protocol_info& http_headers,
-                              boost::uint32_t current_stream_count);
+                              pion::uint32_t current_stream_count);
     
     /**
      * parses the data for SPDY
      *
      */
-    void parse_spdy_data(boost::system::error_code& ec,
+    void parse_spdy_data(pion::error_code& ec,
                          const spdy_control_frame_info& frame,
-                         boost::uint32_t stream_id,
+                         pion::uint32_t stream_id,
                          http_protocol_info& http_info);
     
     /**
      * parses an the Settings Frame for SPDY
      *
      */
-    void parse_spdy_settings_frame(boost::system::error_code& ec,
+    void parse_spdy_settings_frame(pion::error_code& ec,
                                    const spdy_control_frame_info& frame);
     
     /**
      * parses an the RST stream for SPDY
      *
      */
-    void parse_spdy_rst_stream(boost::system::error_code& ec,
+    void parse_spdy_rst_stream(pion::error_code& ec,
                                const spdy_control_frame_info& frame);
     
     /**
      * parses an the Ping Frame for SPDY
      *
      */
-    void parse_spdy_ping_frame(boost::system::error_code& ec,
+    void parse_spdy_ping_frame(pion::error_code& ec,
                                const spdy_control_frame_info& frame);
     
     /**
      * parses an the GoAway Frame for SPDY
      *
      */
-    void parse_spdy_goaway_frame(boost::system::error_code& ec,
+    void parse_spdy_goaway_frame(pion::error_code& ec,
                                  const spdy_control_frame_info& frame);
     
     /**
      * parses an the WindowUpdate Frame for SPDY
      *
      */
-    void parse_spdy_window_update_frame(boost::system::error_code& ec,
+    void parse_spdy_window_update_frame(pion::error_code& ec,
                                         const spdy_control_frame_info& frame);
     
     /**
      * parse a SPDY frame (protected implementation)
      *
-     * @return boost::tribool result of parsing:
+     * @return pion::tribool result of parsing:
      *                        false = SPDY frame has an error,
      *                        true = finished parsing SPDY frame,
      *                        indeterminate = not yet finished parsing SPDY frame
      */
-    boost::tribool parse_spdy_frame(boost::system::error_code& ec,
+    pion::tribool parse_spdy_frame(pion::error_code& ec,
                                     const decompressor_ptr& decompressor,
                                     http_protocol_info& http_headers,
-                                    boost::uint32_t& length_packet,
-                                    boost::uint32_t current_stream_count);
+                                    pion::uint32_t& length_packet,
+                                    pion::uint32_t current_stream_count);
     
 private:
     
@@ -243,11 +245,11 @@ private:
     static error_category_t *           m_error_category_ptr;
     
     /// used to ensure thread safety of the HTTPParser ErrorCategory
-    static boost::once_flag             m_instance_flag;
+    static pion::once_flag             m_instance_flag;
 };
 
 /// data type for a spdy reader pointer
-typedef boost::shared_ptr<parser>       parser_ptr;
+typedef pion::shared_ptr<parser>       parser_ptr;
         
         
 }   // end namespace spdy

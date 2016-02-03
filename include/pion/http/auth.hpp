@@ -10,18 +10,17 @@
 #ifndef __PION_HTTP_AUTH_HEADER__
 #define __PION_HTTP_AUTH_HEADER__
 
+#include <pion/config.hpp>
 #include <set>
 #include <map>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <pion/config.hpp>
+#include <pion/utils/pion_memory.hpp>
 #include <pion/error.hpp>
 #include <pion/logger.hpp>
 #include <pion/hash_map.hpp>
 #include <pion/tcp/connection.hpp>
 #include <pion/user.hpp>
 #include <pion/http/request.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>    // order important, otherwise compiling error under win32
+#include <pion/utils/pion_chrono.hpp>
 
 
 namespace pion {    // begin namespace pion
@@ -32,7 +31,7 @@ namespace http {    // begin namespace http
 /// auth: a base class for handling HTTP Authentication and session management
 ///
 class PION_API auth :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 public:
     
@@ -66,7 +65,7 @@ public:
      * @param value the value of the option
      */
     virtual void set_option(const std::string& name, const std::string& /* value */) {
-        BOOST_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
+        PION_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
     }
     
     /**
@@ -124,7 +123,7 @@ protected:
     typedef std::set<std::string>   resource_set_type;
 
     /// data type used to map authentication credentials to user objects
-    typedef std::map<std::string,std::pair<boost::posix_time::ptime,user_ptr> >  user_cache_type;
+    typedef std::map<std::string,std::pair<pion::chrono::system_clock::time_point,user_ptr> >  user_cache_type;
     
     
     /**
@@ -162,11 +161,11 @@ protected:
     resource_set_type       m_white_list;
 
     /// mutex used to protect access to the resources
-    mutable boost::mutex    m_resource_mutex;
+    mutable pion::mutex    m_resource_mutex;
 };
 
 /// data type for a auth pointer
-typedef boost::shared_ptr<auth> auth_ptr;
+typedef pion::shared_ptr<auth> auth_ptr;
 
 
 }   // end namespace http

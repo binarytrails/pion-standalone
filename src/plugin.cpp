@@ -7,10 +7,8 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/thread/mutex.hpp>
 #include <pion/config.hpp>
+#include <pion/utils/pion_mutex.hpp>
 #include <pion/error.hpp>
 #include <pion/plugin.hpp>
 
@@ -33,7 +31,7 @@ const std::string           plugin::PION_PLUGIN_DESTROY("pion_destroy_");
     const std::string           plugin::PION_PLUGIN_EXTENSION(".so");
 #endif
 const std::string           plugin::PION_CONFIG_EXTENSION(".conf");
-boost::once_flag            plugin::m_instance_flag = BOOST_ONCE_INIT;
+pion::once_flag            plugin::m_instance_flag = BOOST_ONCE_INIT;
 plugin::config_type    *plugin::m_config_ptr = NULL;
 
     
@@ -45,13 +43,13 @@ void plugin::create_plugin_config(void)
     m_config_ptr = &UNIQUE_PION_PLUGIN_CONFIG;
 }
 
-void plugin::check_cygwin_path(boost::filesystem::path& final_path,
+void plugin::check_cygwin_path(pion::filesystem::path& final_path,
                                  const std::string& start_path)
 {
 #if defined(PION_WIN32) && defined(PION_CYGWIN_DIRECTORY)
     // try prepending PION_CYGWIN_DIRECTORY if not complete
     if (! final_path.is_complete() && final_path.has_root_directory()) {
-        final_path = boost::filesystem::path(std::string(PION_CYGWIN_DIRECTORY) + start_path);
+        final_path = pion::filesystem::path(std::string(PION_CYGWIN_DIRECTORY) + start_path);
     }
 #else
     (void)final_path;
@@ -61,24 +59,20 @@ void plugin::check_cygwin_path(boost::filesystem::path& final_path,
 
 void plugin::add_plugin_directory(const std::string& dir)
 {
-    boost::filesystem::path plugin_path = boost::filesystem::system_complete(dir);
+    pion::filesystem::path plugin_path = pion::filesystem::system_complete(dir);
     check_cygwin_path(plugin_path, dir);
-    if (! boost::filesystem::exists(plugin_path) )
-        BOOST_THROW_EXCEPTION( error::directory_not_found() << error::errinfo_dir_name(dir) );
+    if (! pion::filesystem::exists(plugin_path) )
+        PION_THROW_EXCEPTION( error::directory_not_found() << error::errinfo_dir_name(dir) );
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     cfg.m_plugin_dirs.push_back(plugin_path.string());
-#else
-    cfg.m_plugin_dirs.push_back(plugin_path.directory_string());
-#endif 
-    
+	
 }
 
 void plugin::reset_plugin_directories(void)
 {
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     cfg.m_plugin_dirs.clear();
 }
 
@@ -87,7 +81,7 @@ void plugin::open(const std::string& plugin_name)
     // check first if name matches an existing plugin name
     {
         config_type& cfg = get_plugin_config();
-        boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+        pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
         map_type::iterator itr = cfg.m_plugin_map.find(plugin_name);
         if (itr != cfg.m_plugin_map.end()) {
             release_data();  // make sure we're not already pointing to something
@@ -101,7 +95,7 @@ void plugin::open(const std::string& plugin_name)
     std::string plugin_file;
 
     if (!find_plugin_file(plugin_file, plugin_name))
-        BOOST_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_name) );
+        PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_name) );
         
     open_file(plugin_file);
 }
@@ -115,7 +109,7 @@ void plugin::open_file(const std::string& plugin_file)
     
     // check to see if we already have a matching shared library
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     map_type::iterator itr = cfg.m_plugin_map.find(plugin_data.m_plugin_name);
     if (itr == cfg.m_plugin_map.end()) {
         // no plug-ins found with the same name
@@ -140,7 +134,7 @@ void plugin::release_data(void)
 {
     if (m_plugin_data != NULL) {
         config_type& cfg = get_plugin_config();
-        boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+        pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
         // double-check after locking mutex
         if (m_plugin_data != NULL && --m_plugin_data->m_references == 0) {
             // no more references to the plug-in library
@@ -169,7 +163,7 @@ void plugin::grab_data(const plugin& p)
 {
     release_data();  // make sure we're not already pointing to something
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     m_plugin_data = const_cast<data_type*>(p.m_plugin_data);
     if (m_plugin_data != NULL) {
         ++ m_plugin_data->m_references;
@@ -185,7 +179,7 @@ bool plugin::find_file(std::string& path_to_file, const std::string& name,
 
     // nope, check search paths
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     for (std::vector<std::string>::iterator i = cfg.m_plugin_dirs.begin();
          i != cfg.m_plugin_dirs.end(); ++i)
     {
@@ -201,9 +195,9 @@ bool plugin::check_for_file(std::string& final_path, const std::string& start_pa
                               const std::string& name, const std::string& extension)
 {
     // check for cygwin path oddities
-    boost::filesystem::path cygwin_safe_path(start_path);
+    pion::filesystem::path cygwin_safe_path(start_path);
     check_cygwin_path(cygwin_safe_path, start_path);
-    boost::filesystem::path test_path(cygwin_safe_path);
+    pion::filesystem::path test_path(cygwin_safe_path);
 
     // if a name is specified, append it to the test path
     if (! name.empty())
@@ -212,12 +206,8 @@ bool plugin::check_for_file(std::string& final_path, const std::string& start_pa
     // check for existence of file (without extension)
     try {
         // is_regular may throw if directory is not readable
-        if (boost::filesystem::is_regular(test_path)) {
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
+        if (pion::filesystem::is_regular(test_path)) {
             final_path = test_path.string();
-#else
-            final_path = test_path.file_string();
-#endif 
             return true;
         }
     } catch (...) {}
@@ -225,24 +215,20 @@ bool plugin::check_for_file(std::string& final_path, const std::string& start_pa
     // next, try appending the extension
     if (name.empty()) {
         // no "name" specified -> append it directly to start_path
-        test_path = boost::filesystem::path(start_path + extension);
+        test_path = pion::filesystem::path(start_path + extension);
         // in this case, we need to re-check for the cygwin oddities
         check_cygwin_path(test_path, start_path + extension);
     } else {
         // name is specified, so we can just re-use cygwin_safe_path
         test_path = cygwin_safe_path /
-            boost::filesystem::path(name + extension);
+            pion::filesystem::path(name + extension);
     }
 
     // re-check for existence of file (after adding extension)
     try {
         // is_regular may throw if directory is not readable
-        if (boost::filesystem::is_regular(test_path)) {
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
+        if (pion::filesystem::is_regular(test_path)) {
             final_path = test_path.string();
-#else
-            final_path = test_path.file_string();
-#endif 
             return true;
         }
     } catch (...) {}
@@ -268,12 +254,12 @@ void plugin::open_plugin(const std::string& plugin_file,
             error_str += " (";
             error_str += error_msg;
             error_str += ')';
-            BOOST_THROW_EXCEPTION( error::open_plugin()
+            PION_THROW_EXCEPTION( error::open_plugin()
                                   << error::errinfo_plugin_name(plugin_data.m_plugin_name)
                                   << error::errinfo_message(error_str) );
         } else
 #endif
-            BOOST_THROW_EXCEPTION( error::open_plugin()
+            PION_THROW_EXCEPTION( error::open_plugin()
                                   << error::errinfo_plugin_name(plugin_data.m_plugin_name) );
     }
     
@@ -283,7 +269,7 @@ void plugin::open_plugin(const std::string& plugin_file,
                          PION_PLUGIN_CREATE + plugin_data.m_plugin_name);
     if (plugin_data.m_create_func == NULL) {
         close_dynamic_library(plugin_data.m_lib_handle);
-        BOOST_THROW_EXCEPTION( error::plugin_missing_symbol()
+        PION_THROW_EXCEPTION( error::plugin_missing_symbol()
                               << error::errinfo_plugin_name(plugin_data.m_plugin_name)
                               << error::errinfo_symbol_name(PION_PLUGIN_CREATE + plugin_data.m_plugin_name) );
     }
@@ -294,7 +280,7 @@ void plugin::open_plugin(const std::string& plugin_file,
                          PION_PLUGIN_DESTROY + plugin_data.m_plugin_name);
     if (plugin_data.m_destroy_func == NULL) {
         close_dynamic_library(plugin_data.m_lib_handle);
-        BOOST_THROW_EXCEPTION( error::plugin_missing_symbol()
+        PION_THROW_EXCEPTION( error::plugin_missing_symbol()
                               << error::errinfo_plugin_name(plugin_data.m_plugin_name)
                               << error::errinfo_symbol_name(PION_PLUGIN_DESTROY + plugin_data.m_plugin_name) );
     }
@@ -302,7 +288,7 @@ void plugin::open_plugin(const std::string& plugin_file,
 
 std::string plugin::get_plugin_name(const std::string& plugin_file)
 {
-    return boost::filesystem::basename(boost::filesystem::path(plugin_file));
+    return pion::filesystem::basename(pion::filesystem::path(plugin_file));
 }
 
 void plugin::get_all_plugin_names(std::vector<std::string>& plugin_names)
@@ -310,18 +296,14 @@ void plugin::get_all_plugin_names(std::vector<std::string>& plugin_names)
     // Iterate through all the Plugin directories.
     std::vector<std::string>::iterator it;
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     for (it = cfg.m_plugin_dirs.begin(); it != cfg.m_plugin_dirs.end(); ++it) {
         // Find all shared libraries in the directory and add them to the list of Plugin names.
-        boost::filesystem::directory_iterator end;
-        for (boost::filesystem::directory_iterator it2(*it); it2 != end; ++it2) {
-            if (boost::filesystem::is_regular(*it2)) {
-                if (boost::filesystem::extension(it2->path()) == plugin::PION_PLUGIN_EXTENSION) {
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
+        pion::filesystem::directory_iterator end;
+        for (pion::filesystem::directory_iterator it2(*it); it2 != end; ++it2) {
+            if (pion::filesystem::is_regular(*it2)) {
+                if (pion::filesystem::extension(it2->path()) == plugin::PION_PLUGIN_EXTENSION) {
                     plugin_names.push_back(plugin::get_plugin_name(it2->path().filename().string()));
-#else
-                    plugin_names.push_back(plugin::get_plugin_name(it2->path().leaf()));
-#endif 
                 }
             }
         }
@@ -347,19 +329,11 @@ void *plugin::load_dynamic_library(const std::string& plugin_file)
 #else
     // convert into a full/absolute/complete path since dlopen()
     // does not always search the CWD on some operating systems
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
-    const boost::filesystem::path full_path = boost::filesystem::absolute(plugin_file);
-#else
-    const boost::filesystem::path full_path = boost::filesystem::complete(plugin_file);
-#endif 
+    const pion::filesystem::path full_path = pion::filesystem::absolute(plugin_file);
     // NOTE: you must load shared libraries using RTLD_GLOBAL on Unix platforms
     // due to a bug in GCC (or Boost::any, depending on which crowd you want to believe).
     // see: http://svn.boost.org/trac/boost/ticket/754
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
     return dlopen(full_path.string().c_str(), RTLD_LAZY | RTLD_GLOBAL);
-#else
-    return dlopen(full_path.file_string().c_str(), RTLD_LAZY | RTLD_GLOBAL);
-#endif 
 #endif
 }
 
@@ -397,7 +371,7 @@ void plugin::add_static_entry_point(const std::string& plugin_name,
 {
     // check for duplicate
     config_type& cfg = get_plugin_config();
-    boost::mutex::scoped_lock plugin_lock(cfg.m_plugin_mutex);
+    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     map_type::iterator itr = cfg.m_plugin_map.find(plugin_name);
     if (itr == cfg.m_plugin_map.end()) {
         // no plug-ins found with the same name

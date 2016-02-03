@@ -10,9 +10,9 @@
 #ifndef __PION_PLUGIN_SERVICE_HEADER__
 #define __PION_PLUGIN_SERVICE_HEADER__
 
-#include <string>
-#include <boost/noncopyable.hpp>
 #include <pion/config.hpp>
+#include <string>
+#include <pion/utils/pion_memory.hpp>
 #include <pion/error.hpp>
 #include <pion/algorithm.hpp>
 #include <pion/http/request.hpp>
@@ -27,7 +27,7 @@ namespace http {    // begin namespace http
 /// plugin_service: interface class for web services
 /// 
 class plugin_service :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 public:
 
@@ -52,7 +52,7 @@ public:
      * @param value the value of the option
      */
     virtual void set_option(const std::string& name, const std::string& /* value */) {
-        BOOST_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
+        PION_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
     }
     
     /// called when the web service's server is starting

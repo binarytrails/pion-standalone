@@ -10,12 +10,11 @@
 #ifndef __PION_PROCESS_HEADER__
 #define __PION_PROCESS_HEADER__
 
-#include <string>
-#include <boost/noncopyable.hpp>
-#include <boost/thread/once.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition.hpp>
 #include <pion/config.hpp>
+#include <string>
+#include <pion/utils/pion_memory.hpp>
+#include <pion/utils/pion_mutex.hpp>
+#include <pion/utils/pion_condition_variable.hpp>
 
 // Dump file generation support on Windows
 #ifdef PION_WIN32
@@ -35,7 +34,7 @@ namespace pion {    // begin namespace pion
 /// process: class for managing process/service related functions
 ///
 class PION_API process :
-    private boost::noncopyable
+    private pion::noncopyable
 {
 public:
 
@@ -99,10 +98,10 @@ protected:
         bool                    shutdown_now;
         
         /// triggered when it is time to shutdown
-        boost::condition        shutdown_cond;
+        pion::condition_variable        shutdown_cond;
 
         /// used to protect the shutdown condition
-        boost::mutex            shutdown_mutex;
+        pion::mutex            shutdown_mutex;
 
 // Dump file generation support on Windows
 #ifdef PION_WIN32
@@ -119,7 +118,7 @@ protected:
 
     /// returns a singleton instance of config_type
     static inline config_type& get_config(void) {
-        boost::call_once(process::create_config, m_instance_flag);
+        pion::call_once(m_instance_flag, process::create_config);
         return *m_config_ptr;
     }
 
@@ -131,7 +130,7 @@ private:
 
     
     /// used to ensure thread safety of the config_type singleton
-    static boost::once_flag             m_instance_flag;
+    static pion::once_flag             m_instance_flag;
 
     /// pointer to the config_type singleton
     static config_type *          m_config_ptr;

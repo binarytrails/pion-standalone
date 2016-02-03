@@ -13,9 +13,8 @@
     #include <sys/types.h>
     #include <unistd.h>
     #include <sys/types.h>
-    #include <boost/regex.hpp>
-    #include <boost/tokenizer.hpp>
-    #include <boost/lexical_cast.hpp>
+    #include <pion/utils/pion_regex.hpp>
+    #include <pion/utils/pion_string.hpp>
     #include <fstream>
 #endif
 
@@ -25,8 +24,8 @@ namespace pion {    // begin namespace pion
 
 // static members of admin_rights
 
-const boost::int16_t    admin_rights::ADMIN_USER_ID = 0;
-boost::mutex            admin_rights::m_mutex;
+const pion::int16_t    admin_rights::ADMIN_USER_ID = 0;
+pion::mutex            admin_rights::m_mutex;
 
 
 // admin_rights member functions
@@ -119,9 +118,9 @@ long admin_rights::find_system_id(const std::string& name,
     const std::string& file)
 {
     // check if name is the system id
-    const boost::regex just_numbers("\\d+");
-    if (boost::regex_match(name, just_numbers)) {
-        return boost::lexical_cast<boost::int32_t>(name);
+    const pion::regex just_numbers("\\d+");
+    if (pion::regex_match(name, just_numbers)) {
+        return pion::stoi(name);
     }
 
     // open system file
@@ -131,21 +130,21 @@ long admin_rights::find_system_id(const std::string& name,
     }
 
     // find id in system file
-    typedef boost::tokenizer<boost::char_separator<char> > Tok;
-    boost::char_separator<char> sep(":");
+    typedef std::vector<std::string> Tok;
+    const char sep = ':';
     std::string line;
-    boost::int32_t system_id = -1;
+    pion::int32_t system_id = -1;
 
     while (std::getline(system_file, line, '\n')) {
-        Tok tokens(line, sep);
+        Tok tokens = pion::split(line, sep);
         Tok::const_iterator token_it = tokens.begin();
         if (token_it != tokens.end() && *token_it == name) {
             // found line matching name
             if (++token_it != tokens.end() && ++token_it != tokens.end()
-                && boost::regex_match(*token_it, just_numbers))
+                && pion::regex_match(*token_it, just_numbers))
             {
                 // found id as third parameter
-                system_id = boost::lexical_cast<boost::int32_t>(*token_it);
+                system_id = pion::stoi(*token_it);
             }
             break;
         }

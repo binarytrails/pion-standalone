@@ -14,8 +14,8 @@
 #include <fstream>
 #include <boost/version.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition.hpp>
+#include <pion/pion_mutex.hpp>
+#include <pion/pion_condition_variable.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_log.hpp>
 #include <boost/test/unit_test_log_formatter.hpp>
@@ -137,7 +137,7 @@ namespace test {    // begin namespace test
                                      boost::unit_test::log_entry_data const& entry_data,
                                      log_entry_types let )
         {
-            boost::mutex::scoped_lock entry_lock(m_mutex);
+            pion::unique_lock<pion::mutex> entry_lock(m_mutex);
             while (m_entry_in_progress) {
                 m_entry_complete.wait(entry_lock);
             }
@@ -157,7 +157,7 @@ namespace test {    // begin namespace test
         /// ensures that an entry is in progress
         virtual void log_entry_value( std::ostream& ostr, boost::unit_test::const_string value )
         {
-            boost::mutex::scoped_lock entry_lock(m_mutex);
+            pion::unique_lock<pion::mutex> entry_lock(m_mutex);
             if (m_entry_in_progress) {
                 ostr << value;
                 ostr.flush();
@@ -168,7 +168,7 @@ namespace test {    // begin namespace test
         /// assumes the current thread has control via call to log_entry_start()
         virtual void log_entry_finish( std::ostream& ostr )
         {
-            boost::mutex::scoped_lock entry_lock(m_mutex);
+            pion::unique_lock<pion::mutex> entry_lock(m_mutex);
             if (m_entry_in_progress) {
                 ostr << BOOST_TEST_L( "]]></" ) << m_curr_tag << BOOST_TEST_L( ">" ) << std::endl;
                 m_curr_tag.clear();
@@ -192,10 +192,10 @@ namespace test {    // begin namespace test
         volatile bool       m_entry_in_progress;
         
         /// condition used to signal the completion of a log entry
-        boost::condition    m_entry_complete;
+        pion::condition_variable    m_entry_complete;
         
         /// mutex used to prevent multiple threads from interleaving entries
-        boost::mutex        m_mutex;
+        pion::mutex        m_mutex;
 
         /// current xml tag
         boost::unit_test::const_string  m_curr_tag;

@@ -7,7 +7,6 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <boost/algorithm/string.hpp>
 #include <pion/algorithm.hpp>
 #include <pion/http/cookie_auth.hpp>
 #include <pion/http/response_writer.hpp>
@@ -33,21 +32,21 @@ cookie_auth::cookie_auth(user_manager_ptr userManager,
                                const std::string& logout,
                                const std::string& redirect)
     : http::auth(userManager), m_login(login), m_logout(logout), m_redirect(redirect),
-    m_random_gen(), m_random_range(0, 255), m_random_die(m_random_gen, m_random_range),
-    m_cache_cleanup_time(boost::posix_time::second_clock::universal_time())
+    m_random_gen(), m_random_die(0, 255),
+    m_cache_cleanup_time(pion::chrono::system_clock::now())
 {
     // set logger for this class
     set_logger(PION_GET_LOGGER("pion.http.cookie_auth"));
 
     // Seed random number generator with current time as time_t int value, cast to the required type.
-    // (Note that boost::mt19937::result_type is boost::uint32_t, and casting to an unsigned n-bit integer is
+    // (Note that pion::mt19937::result_type is pion::uint32_t, and casting to an unsigned n-bit integer is
     // defined by the standard to keep the lower n bits.  Since ::time() returns seconds since Jan 1, 1970, 
     // it will be a long time before we lose any entropy here, even if time_t is a 64-bit int.)
-    m_random_gen.seed(static_cast<boost::mt19937::result_type>(::time(NULL)));
+    m_random_gen.seed(static_cast<pion::mt19937::result_type>(::time(NULL)));
 
     // generate some random numbers to increase entropy of the rng
     for (unsigned int n = 0; n < 100; ++n)
-        m_random_die();
+        m_random_die(m_random_gen);
 }
     
 bool cookie_auth::handle_request(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn)
@@ -66,14 +65,14 @@ bool cookie_auth::handle_request(const http::request_ptr& http_request_ptr, cons
     }
     
     // check cache for expiration
-    boost::posix_time::ptime time_now(boost::posix_time::second_clock::universal_time());
+    pion::chrono::system_clock::time_point time_now(pion::chrono::system_clock::now());
     expire_cache(time_now);
 
     // if we are here, we need to check if access authorized...
     const std::string auth_cookie(http_request_ptr->get_cookie(AUTH_COOKIE_NAME));
     if (! auth_cookie.empty()) {
         // check if this cookie is in user cache
-        boost::mutex::scoped_lock cache_lock(m_cache_mutex);
+        pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
         user_cache_type::iterator user_cache_itr=m_user_cache.find(auth_cookie);
         if (user_cache_itr != m_user_cache.end()) {
             // we find those credential in our cache...
@@ -99,7 +98,7 @@ void cookie_auth::set_option(const std::string& name, const std::string& value)
     else if (name=="redirect")
         m_redirect = value;
     else
-        BOOST_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
+        PION_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
 }
 
 bool cookie_auth::process_login(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn)
@@ -133,20 +132,20 @@ bool cookie_auth::process_login(const http::request_ptr& http_request_ptr, const
         std::string rand_binary;
         rand_binary.reserve(RANDOM_COOKIE_BYTES);
         for (unsigned int i=0; i<RANDOM_COOKIE_BYTES ; i++) {
-            rand_binary += static_cast<unsigned char>(m_random_die());
+            rand_binary += static_cast<unsigned char>(m_random_die(m_random_gen));
         }
         algorithm::base64_encode(rand_binary, new_cookie);
 
         // add new session to cache
-        boost::posix_time::ptime time_now(boost::posix_time::second_clock::universal_time());
-        boost::mutex::scoped_lock cache_lock(m_cache_mutex);
+        pion::chrono::system_clock::time_point time_now(pion::chrono::system_clock::now());
+        pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
         m_user_cache.insert(std::make_pair(new_cookie,std::make_pair(time_now,user)));
     } else {
         // process logout sequence
         // if auth cookie presented - clean cache out
         const std::string auth_cookie(http_request_ptr->get_cookie(AUTH_COOKIE_NAME));
         if (! auth_cookie.empty()) {
-            boost::mutex::scoped_lock cache_lock(m_cache_mutex);
+            pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
             user_cache_type::iterator user_cache_itr=m_user_cache.find(auth_cookie);
             if (user_cache_itr!=m_user_cache.end()) {
                 m_user_cache.erase(user_cache_itr);
@@ -189,7 +188,7 @@ void cookie_auth::handle_unauthorized(const http::request_ptr& http_request_ptr,
         "<BODY><H1>401 Unauthorized.</H1></BODY>"
         "</HTML> ";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-    boost::bind(&tcp::connection::finish, tcp_conn)));
+    pion::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_UNAUTHORIZED);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_UNAUTHORIZED);
     writer->write_no_copy(CONTENT);
@@ -215,7 +214,7 @@ void cookie_auth::handle_redirection(const http::request_ptr& http_request_ptr,
         "<BODY><H1>302 Found.</H1></BODY>"
         "</HTML> ";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-        boost::bind(&tcp::connection::finish, tcp_conn)));
+        pion::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_FOUND);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_FOUND);
     writer->get_response().add_header(http::types::HEADER_LOCATION, redirection_url);
@@ -242,7 +241,7 @@ void cookie_auth::handle_ok(const http::request_ptr& http_request_ptr,
 {
     // send 204 (No Content) response
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-        boost::bind(&tcp::connection::finish, tcp_conn)));
+        pion::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_NO_CONTENT);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_NO_CONTENT);
     // Note: use empty pass "" while setting cookies to workaround IE/FF difference
@@ -258,17 +257,17 @@ void cookie_auth::handle_ok(const http::request_ptr& http_request_ptr,
     writer->send();
 }
 
-void cookie_auth::expire_cache(const boost::posix_time::ptime &time_now)
+void cookie_auth::expire_cache(const pion::chrono::system_clock::time_point &time_now)
 {
-    if (time_now > m_cache_cleanup_time + boost::posix_time::seconds(CACHE_EXPIRATION)) {
+    if (time_now > m_cache_cleanup_time + pion::chrono::seconds(CACHE_EXPIRATION)) {
         // expire cache
-        boost::mutex::scoped_lock cache_lock(m_cache_mutex);
+        pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
         user_cache_type::iterator i;
         user_cache_type::iterator next=m_user_cache.begin();
         while (next!=m_user_cache.end()) {
             i=next;
             ++next;
-            if (time_now > i->second.first + boost::posix_time::seconds(CACHE_EXPIRATION)) {
+            if (time_now > i->second.first + pion::chrono::seconds(CACHE_EXPIRATION)) {
                 // ok - this is an old record.. expire it now
                 m_user_cache.erase(i);
             }

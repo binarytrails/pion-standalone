@@ -18,14 +18,13 @@
     #include <sys/stat.h>
 #endif
 
-#include <boost/filesystem.hpp>
-#include <boost/date_time.hpp>
+#include <pion/utils/pion_filesystem.hpp>
 
 namespace pion {    // begin namespace pion
     
 // static members of process
     
-boost::once_flag                process::m_instance_flag = BOOST_ONCE_INIT;
+pion::once_flag                process::m_instance_flag = BOOST_ONCE_INIT;
 process::config_type *process::m_config_ptr = NULL;
 
     
@@ -34,7 +33,7 @@ process::config_type *process::m_config_ptr = NULL;
 void process::shutdown(void)
 {
     config_type& cfg = get_config();
-    boost::mutex::scoped_lock shutdown_lock(cfg.shutdown_mutex);
+    pion::unique_lock<pion::mutex> shutdown_lock(cfg.shutdown_mutex);
     if (! cfg.shutdown_now) {
         cfg.shutdown_now = true;
         cfg.shutdown_cond.notify_all();
@@ -44,7 +43,7 @@ void process::shutdown(void)
 void process::wait_for_shutdown(void)
 {
     config_type& cfg = get_config();
-    boost::mutex::scoped_lock shutdown_lock(cfg.shutdown_mutex);
+    pion::unique_lock<pion::mutex> shutdown_lock(cfg.shutdown_mutex);
     while (! cfg.shutdown_now)
         cfg.shutdown_cond.wait(shutdown_lock);
 }
@@ -78,7 +77,7 @@ void process::set_dumpfile_directory(const std::string& dir)
     config_type& cfg = get_config();
     static const TCHAR* DBGHELP_DLL = _T("DBGHELP.DLL");
 
-    if (!dir.empty() && !boost::filesystem::is_directory(dir)) {
+    if (!dir.empty() && !pion::filesystem::is_directory(dir)) {
         throw dumpfile_init_exception("Dump file directory doesn't exist: " + dir);
     }
 
@@ -137,24 +136,20 @@ std::string process::generate_dumpfile_name()
     config_type& cfg = get_config();
 
     // generate file name based on current timestamp
-    using namespace boost::posix_time;
+
     static std::locale loc(std::cout.getloc(), new time_facet("%Y%m%d_%H%M%S"));
     std::stringstream ss;
     ss.imbue(loc);
     ss << second_clock::universal_time() << ".dmp";
 
     // build the full path
-    boost::filesystem::path p(boost::filesystem::system_complete(cfg.dumpfile_dir));
+    pion::filesystem::path p(pion::filesystem::system_complete(cfg.dumpfile_dir));
 
     p /= ss.str();
     p.normalize();
     p.make_preferred();
 
-# if defined(BOOST_FILESYSTEM_VERSION) && BOOST_FILESYSTEM_VERSION >= 3
     return p.string();
-#else
-    return p.file_string();
-#endif 
 
 }
 

@@ -125,6 +125,23 @@ AC_TRY_LINK([#include <boost/regex.hpp>],
 LIBS="$LIBS_SAVED"
 AC_SUBST(BOOST_REGEX_LIB)
 
+# Check for Boost Chrono library
+BOOST_TRY_LIB=chrono
+BOOST_TRY_LINK="boost_${BOOST_TRY_LIB}${BOOST_LIB_EXTENSION}"
+LIBS_SAVED="$LIBS"
+LIBS="$LIBS_SAVED -l${BOOST_TRY_LINK} $BOOST_SYSTEM_LIB"
+AC_MSG_CHECKING([for boost::${BOOST_TRY_LIB} library])
+AC_TRY_LINK([#include <boost/chrono.hpp>],
+	[ boost::chrono::system_clock::time_point exp; return 0; ],
+	[ AC_MSG_RESULT(ok)
+	  BOOST_CHRONO_LIB="-l${BOOST_TRY_LINK}"
+	],
+	[ AC_MSG_RESULT(not found)
+	  AC_MSG_ERROR(Unable to link with the boost::${BOOST_TRY_LIB} library)
+	])
+LIBS="$LIBS_SAVED"
+AC_SUBST(BOOST_CHRONO_LIB)
+
 
 # Check for Boost Unit Test Framework
 AC_ARG_ENABLE([tests],

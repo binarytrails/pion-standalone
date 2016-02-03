@@ -12,7 +12,8 @@
 #include <cstdio>
 #include <cstring>
 #include <pion/algorithm.hpp>
-#include <boost/assert.hpp>
+#include <pion/utils/pion_string.hpp>
+#include <pion/utils/pion_assert.hpp>
 
 // macro to shift bitmask by a single bit
 #define SHIFT_BITMASK(ptr, mask)    if (mask & 0x01) { mask = 0x80; ++ptr; } else mask >>= 1;
@@ -74,7 +75,7 @@ bool algorithm::base64_decode(const std::string &input, std::string &output)
         if(++i<input_length) {
             char c = input_ptr[i];
             if(c =='=') { // padding , end of input
-                BOOST_ASSERT( (base64code1 & 0x0f)==0);
+                PION_ASSERT( (base64code1 & 0x0f)==0);
                 return true;
             }
             base64code2 = decoding_data[static_cast<int>(input_ptr[i])];
@@ -87,7 +88,7 @@ bool algorithm::base64_decode(const std::string &input, std::string &output)
         if(++i<input_length) {
             char c = input_ptr[i];
             if(c =='=') { // padding , end of input
-                BOOST_ASSERT( (base64code2 & 0x03)==0);
+                PION_ASSERT( (base64code2 & 0x03)==0);
                 return true;
             }
             base64code3 = decoding_data[static_cast<int>(input_ptr[i])];
@@ -316,7 +317,7 @@ void algorithm::float_from_bytes(long double& value, const unsigned char *ptr, s
     
     // build exponent value from bitstream
     unsigned char mask = 0x80;
-    boost::int16_t exponent = 0;
+    pion::int16_t exponent = 0;
     for (size_t n = 0; n < num_exp_bits; ++n) {
         SHIFT_BITMASK(ptr, mask);
         exponent *= 2;
@@ -336,7 +337,7 @@ void algorithm::float_from_bytes(long double& value, const unsigned char *ptr, s
     }
     
     // calculate final value
-    exponent -= (boost::int16_t)(::pow((long double)2, (int)(num_exp_bits - 1)) - 1);
+    exponent -= (pion::int16_t)(::pow((long double)2, (int)(num_exp_bits - 1)) - 1);
     value = value_sign * significand * ::pow((long double)2, exponent);
 }
 
@@ -353,7 +354,7 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
     }
     
     // break down numbers >= 1.0 by incrementing the exponent & dividing by 2
-    boost::int16_t exponent = 0;
+    pion::int16_t exponent = 0;
     while (value >= 1) {
         value /= 2;
         ++exponent;
@@ -372,7 +373,7 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
     
     // serialize fractional value < 1.0
     bool got_exponent = false;
-    boost::uint16_t num_bits = 0;
+    pion::uint16_t num_bits = 0;
     while (value && num_bits < num_fraction_bits) {
         value *= 2;
         if (got_exponent) {
@@ -393,7 +394,7 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
     
     // normalize exponent.
     // note: we should have a zero exponent if value == 0
-    boost::int32_t high_bit = (boost::int32_t)(::pow((long double)2, (int)(num_exp_bits - 1)));
+    pion::int32_t high_bit = (pion::int32_t)(::pow((long double)2, (int)(num_exp_bits - 1)));
     if (got_exponent)
         exponent += (high_bit - 1);
     else
@@ -411,5 +412,23 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
         high_bit /= 2;
     }
 }
-    
+
+std::vector<std::string> split( const std::string &s, char sep )
+{
+	std::vector<std::string> res;
+	std::string::size_type a = 0;
+	for ( std::string::size_type i = 0; i < s.length(); ++i )
+	{
+		if ( s[i] == sep )
+		{
+			if ( (i - a) > 0 )
+				res.push_back( s.substr( a, i - a ) );
+			a = i + 1;
+		}
+	}
+	if ( (s.length()-a) > 0 )
+		res.push_back( s.substr( a, s.length() - a ) );
+	return res;
+}
+
 }   // end namespace pion

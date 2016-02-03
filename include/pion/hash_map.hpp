@@ -10,11 +10,11 @@
 #ifndef __PION_HASH_MAP_HEADER__
 #define __PION_HASH_MAP_HEADER__
 
+#include <pion/config.hpp>
 #include <string>
 #include <locale>
-#include <boost/algorithm/string.hpp>
+#include <pion/utils/pion_string.hpp>
 #include <boost/functional/hash.hpp>
-#include <pion/config.hpp>
 
 #if defined(PION_HAVE_UNORDERED_MAP)
     #include <unordered_map>
@@ -79,7 +79,7 @@ namespace pion {    // begin namespace pion
         bool operator()(std::string const& x,
                         std::string const& y) const
         {
-            return boost::algorithm::iequals(x, y, std::locale());
+            return pion::iequals(x, y, std::locale());
         }
     };
     

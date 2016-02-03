@@ -7,8 +7,8 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <boost/asio.hpp>
-#include <boost/logic/tribool.hpp>
+#include <pion/utils/pion_asio.hpp>
+#include <pion/utils/pion_tribool.hpp>
 #include <pion/http/reader.hpp>
 #include <pion/http/request.hpp>
 
@@ -19,7 +19,7 @@ namespace http {    // begin namespace http
 
 // reader static members
     
-const boost::uint32_t       reader::DEFAULT_READ_TIMEOUT = 10;
+const pion::uint32_t       reader::DEFAULT_READ_TIMEOUT = 10;
 
 
 // reader member functions
@@ -38,7 +38,7 @@ void reader::receive(void)
     }
 }
 
-void reader::consume_bytes(const boost::system::error_code& read_error,
+void reader::consume_bytes(const pion::error_code& read_error,
                               std::size_t bytes_read)
 {
     // cancel read timer if operation didn't time-out
@@ -67,14 +67,14 @@ void reader::consume_bytes(void)
 {
     // parse the bytes read from the last operation
     //
-    // note that boost::tribool may have one of THREE states:
+    // note that pion::tribool may have one of THREE states:
     //
     // false: encountered an error while parsing message
     // true: finished successfully parsing the message
     // indeterminate: parsed bytes, but the message is not yet finished
     //
-    boost::system::error_code ec;
-    boost::tribool result = parse(get_message(), ec);
+    pion::error_code ec;
+    pion::tribool result = parse(get_message(), ec);
     
     if (gcount() > 0) {
         // parsed > 0 bytes in HTTP headers
@@ -131,21 +131,21 @@ void reader::read_bytes_with_timeout(void)
     read_bytes();
 }
 
-void reader::handle_read_error(const boost::system::error_code& read_error)
+void reader::handle_read_error(const pion::error_code& read_error)
 {
     // close the connection, forcing the client to establish a new one
     m_tcp_conn->set_lifecycle(tcp::connection::LIFECYCLE_CLOSE);   // make sure it will get closed
 
     // check if this is just a message with unknown content length
     if (! check_premature_eof(get_message())) {
-        boost::system::error_code ec;   // clear error code
+        pion::error_code ec;   // clear error code
         finished_reading(ec);
         return;
     }
     
     // only log errors if the parsing has already begun
     if (get_total_bytes_read() > 0) {
-        if (read_error == boost::asio::error::operation_aborted) {
+        if (read_error == pion::asio::error::operation_aborted) {
             // if the operation was aborted, the acceptor was stopped,
             // which means another thread is shutting-down the server
             PION_LOG_INFO(m_logger, "HTTP " << (is_parsing_request() ? "request" : "response")
