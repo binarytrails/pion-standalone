@@ -1,3 +1,32 @@
+Pion **Standalone** Network Library
+===================================
+
+Fork of pion (https://github.com/splunk/pion.git) that does **not**
+requires boost at all.
+
+It still compiles with boost:
+ - feature complete
+ - cmake build only
+ - support for some older version of boost has been removed
+ - requires support for boost::function<> preferred syntax
+ - all boost calls has been encapsulated in pion/utils
+
+In standalone mode:
+ - no need of boost
+ - requires C++11
+ - requires asio standalone
+ - tests still uses boost::test, so compile with --disable-tests
+
+todo:
+ - windows support
+ - linux support
+ - bsd support
+ - make install
+ - cmake build
+
+Original Readme follow:
+
+
 Pion Network Library
 ====================
 
@@ -41,7 +70,7 @@ Generate build using CMake
 [CMake](http://www.cmake.org) is cross-platform build generator.
 Pion required cmake version 2.8.10+
 
-To generate build call 
+To generate build call
 
     cmake <path to pion clone> [-G <generator name>] [-D<option>...]
 
@@ -54,7 +83,7 @@ for example to generate MSVS2012 Win64 solution run
 this will create pion_solution.sln for MSVS2012/Win64
 
 if cmake can't find dependency, use -D<option> to control Find<library> modules search behaviour
-    
+
     -DBOOST_ROOT=<path to installed boost libraries>
     -DZLIB_ROOT=<path to installed zlib>
     -DOPENSSL_ROOT_DIR=...

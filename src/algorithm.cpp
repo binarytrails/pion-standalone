@@ -441,11 +441,15 @@ bool indeterminate( const tribool &t )
 
 std::string to_lower( const std::string &i_s )
 {
-	std::string r;
-	r.reserve( i_s.size() );
-	for ( auto c : i_s )
-		r.push_back( std::tolower( c ) );
+	std::string r( i_s );
+	to_lower( r );
 	return r;
+}
+
+void to_lower( std::string &i_s )
+{
+	for ( auto &c : i_s )
+		c = std::tolower( c );
 }
 
 bool iequals( const std::string &a, const std::string &b, const std::locale & )
