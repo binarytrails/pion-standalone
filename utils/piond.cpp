@@ -9,7 +9,7 @@
 
 #include <vector>
 #include <iostream>
-#include <boost/asio.hpp>
+#include <pion/utils/pion_asio.hpp>
 #include <pion/error.hpp>
 #include <pion/plugin.hpp>
 #include <pion/process.hpp>
@@ -46,7 +46,7 @@ int main (int argc, char *argv[])
     ServiceOptionsType service_options;
     
     // parse command line: determine port number, RESOURCE and WEBSERVICE
-    boost::asio::ip::tcp::endpoint cfg_endpoint(boost::asio::ip::tcp::v4(), DEFAULT_PORT);
+    pion::asio::ip::tcp::endpoint cfg_endpoint(pion::asio::ip::tcp::v4(), DEFAULT_PORT);
     std::string service_config_file;
     std::string resource_name;
     std::string service_name;
@@ -63,7 +63,7 @@ int main (int argc, char *argv[])
                 if (cfg_endpoint.port() == 0) cfg_endpoint.port(DEFAULT_PORT);
             } else if (argv[argnum][1] == 'i' && argv[argnum][2] == '\0' && argnum+1 < argc) {
                 // set ip address
-                cfg_endpoint.address(boost::asio::ip::address::from_string(argv[++argnum]));
+                cfg_endpoint.address(pion::asio::ip::address::from_string(argv[++argnum]));
             } else if (argv[argnum][1] == 'c' && argv[argnum][2] == '\0' && argnum+1 < argc) {
                 service_config_file = argv[++argnum];
             } else if (argv[argnum][1] == 'd' && argv[argnum][2] == '\0' && argnum+1 < argc) {
@@ -135,10 +135,10 @@ int main (int argc, char *argv[])
         }
 
         // add the directory of the program we're running to our path
-        try { plugin::add_plugin_directory(boost::filesystem::path(argv[0]).branch_path().string()); }
+        try { plugin::add_plugin_directory(pion::filesystem::path(argv[0]).parent_path().string()); }
         catch (error::directory_not_found&) {
             PION_LOG_WARN(main_log, "Directory of current executable does not exist: "
-                << boost::filesystem::path(argv[0]).branch_path());
+                << pion::filesystem::path(argv[0]).parent_path());
         }
 
         // create a server for HTTP & add the Hello Service

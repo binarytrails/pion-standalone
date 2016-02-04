@@ -42,7 +42,7 @@ namespace pion { namespace filesystem
 	std::time_t last_write_time( const path &i_path );
 	size_t file_size( const path &i_path );
 	
-	bool remove( const path &i_path );
+	void remove( const path &i_path );
 }
 
 std::vector<filesystem::path> get_dir_content( const filesystem::path &i_path );
