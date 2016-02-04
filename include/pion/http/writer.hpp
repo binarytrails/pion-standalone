@@ -19,7 +19,7 @@
 #include <pion/logger.hpp>
 #include <pion/tcp/connection.hpp>
 #include <pion/http/message.hpp>
-
+#include <list>
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http

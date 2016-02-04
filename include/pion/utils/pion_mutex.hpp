@@ -14,6 +14,8 @@ namespace pion
 	using std::call_once;
 }
 
+#define PION_ONCE_INIT {}
+
 #else
 
 #include <boost/thread/mutex.hpp>
@@ -33,6 +35,8 @@ namespace pion
 		boost::call_once( f, flag );
 	}
 }
+
+#define PION_ONCE_INIT BOOST_ONCE_INIT
 
 #endif
 

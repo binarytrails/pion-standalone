@@ -75,10 +75,10 @@ protected:
         
     /// Reads more bytes from the TCP connection
     virtual void read_bytes(void) {
-        get_connection()->async_read_some(pion::bind(&request_reader::consume_bytes,
+        get_connection()->async_read_some(pion::bind(static_cast<void (request_reader::*)(const pion::error_code&, std::size_t)>(&request_reader::consume_bytes),
                                                         shared_from_this(),
-                                                        pion::asio::placeholders::error,
-                                                        pion::asio::placeholders::bytes_transferred));
+                                                        pion::placeholders::_1,
+                                                        pion::placeholders::_2));
     }
 
     /// Called after we have finished parsing the HTTP message headers

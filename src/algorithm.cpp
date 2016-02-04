@@ -13,6 +13,7 @@
 #include <cstring>
 #include <pion/algorithm.hpp>
 #include <pion/utils/pion_string.hpp>
+#include <pion/utils/pion_tribool.hpp>
 #include <pion/utils/pion_assert.hpp>
 
 // macro to shift bitmask by a single bit
@@ -430,5 +431,42 @@ std::vector<std::string> split( const std::string &s, char sep )
 		res.push_back( s.substr( a, s.length() - a ) );
 	return res;
 }
+
+#ifdef ASIO_STANDALONE
+
+bool indeterminate( const tribool &t )
+{
+	return t.v == 2;
+}
+
+std::string to_lower( const std::string &i_s )
+{
+	std::string r;
+	r.reserve( i_s.size() );
+	for ( auto c : i_s )
+		r.push_back( std::tolower( c ) );
+	return r;
+}
+
+bool iequals( const std::string &a, const std::string &b, const std::locale & )
+{
+	return to_lower( a ) == to_lower( b );
+}
+
+void trim( std::string &s )
+{
+	auto f = s.find_first_not_of( "\r\n\t " );
+	if ( f != std::string::npos )
+	{
+		s.erase( 0, f );
+		auto l = s.find_last_not_of( "\r\n\t " );
+		assert( l != std::string::npos );
+		s.erase( l + 1 );
+	}
+	else
+		s.clear();
+}
+
+#endif
 
 }   // end namespace pion

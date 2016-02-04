@@ -30,7 +30,7 @@ void timer::start(const pion::uint32_t seconds)
     m_timer_active = true;
     m_timer.expires_from_now(pion::chrono::seconds(seconds));
     m_timer.async_wait(pion::bind(&timer::timer_callback,
-        shared_from_this(), _1));
+        shared_from_this(), pion::placeholders::_1));
 }
 
 void timer::cancel(void)

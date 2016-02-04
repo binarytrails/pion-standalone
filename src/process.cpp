@@ -12,6 +12,7 @@
 #include <pion/logger.hpp>
 
 #include <signal.h>
+#include <stdlib.h>
 #ifndef PION_WIN32
     #include <fcntl.h>
     #include <unistd.h>
@@ -24,7 +25,7 @@ namespace pion {    // begin namespace pion
     
 // static members of process
     
-pion::once_flag                process::m_instance_flag = BOOST_ONCE_INIT;
+pion::once_flag                process::m_instance_flag = PION_ONCE_INIT;
 process::config_type *process::m_config_ptr = NULL;
 
     

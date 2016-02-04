@@ -11,6 +11,7 @@ namespace pion
 	using std::function;
 	using std::bind;
 	using std::ref;
+	namespace placeholders = std::placeholders;
 }
 
 #else
@@ -23,6 +24,13 @@ namespace pion
 	using boost::function;
 	using boost::bind;
 	using boost::ref;
+	
+	namespace placeholders
+	{
+		using ::_1;
+		using ::_2;
+		using ::_3;
+	}
 }
 
 #endif

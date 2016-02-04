@@ -41,7 +41,7 @@ static char const* rst_stream_status(pion::uint32_t rst_stream_status_code)
 }
 
 parser::error_category_t *  parser::m_error_category_ptr = NULL;
-pion::once_flag            parser::m_instance_flag = BOOST_ONCE_INIT;
+pion::once_flag            parser::m_instance_flag = PION_ONCE_INIT;
 
 // parser member functions
 

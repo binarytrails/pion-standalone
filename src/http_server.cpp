@@ -29,7 +29,7 @@ void server::handle_connection(const tcp::connection_ptr& tcp_conn)
 {
     request_reader_ptr my_reader_ptr;
     my_reader_ptr = request_reader::create(tcp_conn, pion::bind(&server::handle_request,
-                                           this, _1, _2, _3));
+                                           this, pion::placeholders::_1, pion::placeholders::_2, pion::placeholders::_3));
     my_reader_ptr->set_max_content_length(m_max_content_length);
     my_reader_ptr->receive();
 }
@@ -45,7 +45,7 @@ void server::handle_request(const http::request_ptr& http_request_ptr,
             m_bad_request_handler(http_request_ptr, tcp_conn);
         } else {
             static const pion::error_condition
-                    ERRCOND_CANCELED(pion::errc::operation_canceled, pion::system_category()),
+                    ERRCOND_CANCELED(pion::errc::operation_canceled /*, pion::system_category()*/),
                     ERRCOND_EOF(pion::asio::error::eof, pion::asio::error::misc_category);
 
             if (ec == ERRCOND_CANCELED || ec == ERRCOND_EOF) {

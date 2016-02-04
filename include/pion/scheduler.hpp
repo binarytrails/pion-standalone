@@ -214,13 +214,13 @@ protected:
             PION_LOG_DEBUG(m_logger, "Waiting for threads to shutdown");
             
             // wait until all threads in the pool have stopped
-            pion::thread current_thread;
             for (ThreadPool::iterator i = m_thread_pool.begin();
                  i != m_thread_pool.end(); ++i)
             {
                 // make sure we do not call join() for the current thread,
                 // since this may yield "undefined behavior"
-                if (**i != current_thread) (*i)->join();
+                if ((*i)->get_id() != pion::this_thread::get_id())
+					(*i)->join();
             }
         }
     }

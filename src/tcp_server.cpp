@@ -25,7 +25,7 @@ server::server(scheduler& sched, const unsigned int tcp_port)
     m_active_scheduler(sched),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(m_active_scheduler.get_io_service(), pion::asio::ssl::context::sslv23),
+    m_ssl_context(pion::asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
@@ -37,7 +37,7 @@ server::server(scheduler& sched, const pion::asio::ip::tcp::endpoint& endpoint)
     m_active_scheduler(sched),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(m_active_scheduler.get_io_service(), pion::asio::ssl::context::sslv23),
+    m_ssl_context(pion::asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
@@ -49,7 +49,7 @@ server::server(const unsigned int tcp_port)
     m_default_scheduler(), m_active_scheduler(m_default_scheduler),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(m_active_scheduler.get_io_service(), pion::asio::ssl::context::sslv23),
+    m_ssl_context(pion::asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
@@ -61,7 +61,7 @@ server::server(const pion::asio::ip::tcp::endpoint& endpoint)
     m_default_scheduler(), m_active_scheduler(m_default_scheduler),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(m_active_scheduler.get_io_service(), pion::asio::ssl::context::sslv23),
+    m_ssl_context(pion::asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
@@ -126,7 +126,7 @@ void server::stop(bool wait_until_finished)
         if (! wait_until_finished) {
             // this terminates any other open connections
             std::for_each(m_conn_pool.begin(), m_conn_pool.end(),
-                          pion::bind(&connection::close, _1));
+                          pion::bind(&connection::close, pion::placeholders::_1));
         }
     
         // wait for all pending connections to complete
@@ -180,7 +180,7 @@ void server::listen(void)
         tcp::connection_ptr new_connection(connection::create(get_io_service(),
                                                               m_ssl_context, m_ssl_flag,
                                                               pion::bind(&server::finish_connection,
-                                                                          this, _1)));
+                                                                          this, pion::placeholders::_1)));
         
         // prune connections that finished uncleanly
         prune_connections();
@@ -192,7 +192,7 @@ void server::listen(void)
         new_connection->async_accept(m_tcp_acceptor,
                                      pion::bind(&server::handle_accept,
                                                  this, new_connection,
-                                                 pion::asio::placeholders::error));
+                                                 pion::placeholders::_1));
     }
 }
 

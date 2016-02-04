@@ -8,6 +8,7 @@
 
 #include <asio.hpp>
 #include <asio/system_timer.hpp>
+#include <functional>
 
 #ifdef PION_HAVE_SSL
     #if defined(__APPLE__)
@@ -17,10 +18,17 @@
     #include <asio/ssl.hpp>
 #endif
 
+namespace asio { namespace placeholders
+{
+	constexpr auto error = std::placeholders::_1;
+	constexpr auto bytes_transferred = std::placeholders::_2;
+} }
+
 // bring asio in the pion namespace
 namespace pion
 {
 	namespace asio = ::asio;
+	
 }
 
 #else

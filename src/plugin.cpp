@@ -31,7 +31,7 @@ const std::string           plugin::PION_PLUGIN_DESTROY("pion_destroy_");
     const std::string           plugin::PION_PLUGIN_EXTENSION(".so");
 #endif
 const std::string           plugin::PION_CONFIG_EXTENSION(".conf");
-pion::once_flag            plugin::m_instance_flag = BOOST_ONCE_INIT;
+pion::once_flag            plugin::m_instance_flag = PION_ONCE_INIT;
 plugin::config_type    *plugin::m_config_ptr = NULL;
 
     
@@ -299,11 +299,11 @@ void plugin::get_all_plugin_names(std::vector<std::string>& plugin_names)
     pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
     for (it = cfg.m_plugin_dirs.begin(); it != cfg.m_plugin_dirs.end(); ++it) {
         // Find all shared libraries in the directory and add them to the list of Plugin names.
-        pion::filesystem::directory_iterator end;
-        for (pion::filesystem::directory_iterator it2(*it); it2 != end; ++it2) {
+		std::vector<pion::filesystem::path> dir_content = pion::get_dir_content( *it );
+        for ( std::vector<pion::filesystem::path>::const_iterator it2 = dir_content.begin(); it2 != dir_content.end(); ++it2 ) {
             if (pion::filesystem::is_regular(*it2)) {
-                if (pion::filesystem::extension(it2->path()) == plugin::PION_PLUGIN_EXTENSION) {
-                    plugin_names.push_back(plugin::get_plugin_name(it2->path().filename().string()));
+                if (pion::filesystem::extension(*it2) == plugin::PION_PLUGIN_EXTENSION) {
+                    plugin_names.push_back(plugin::get_plugin_name(it2->string()));
                 }
             }
         }
@@ -329,7 +329,7 @@ void *plugin::load_dynamic_library(const std::string& plugin_file)
 #else
     // convert into a full/absolute/complete path since dlopen()
     // does not always search the CWD on some operating systems
-    const pion::filesystem::path full_path = pion::filesystem::absolute(plugin_file);
+    const pion::filesystem::path full_path = pion::filesystem::system_complete(plugin_file);
     // NOTE: you must load shared libraries using RTLD_GLOBAL on Unix platforms
     // due to a bug in GCC (or Boost::any, depending on which crowd you want to believe).
     // see: http://svn.boost.org/trac/boost/ticket/754

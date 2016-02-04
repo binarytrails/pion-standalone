@@ -10,8 +10,7 @@
 #ifndef __PION_LOGSERVICE_HEADER__
 #define __PION_LOGSERVICE_HEADER__
 
-#include <boost/thread/mutex.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <pion/utils/pion_mutex.hpp>
 #include <pion/logger.hpp>
 #include <pion/http/plugin_service.hpp>
 #include <pion/http/response_writer.hpp>
@@ -73,7 +72,7 @@ private:
     std::list<std::string>                  m_log_events;
 
     /// mutex to make class thread-safe
-    boost::mutex                            m_log_mutex;
+    pion::mutex                            m_log_mutex;
 
 #if defined(PION_USE_LOG4CXX)
     public:

@@ -63,6 +63,9 @@
     <ClCompile Include="tcp_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pion_filesystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="tcp_timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

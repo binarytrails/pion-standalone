@@ -14,8 +14,10 @@
 #include <string>
 #include <locale>
 #include <pion/utils/pion_string.hpp>
-#include <boost/functional/hash.hpp>
 
+#ifdef ASIO_STANDALONE
+    #include <unordered_map>
+#else
 #if defined(PION_HAVE_UNORDERED_MAP)
     #include <unordered_map>
 #elif defined(PION_HAVE_TR1_UNORDERED_MAP)
@@ -27,10 +29,17 @@
 #else
     #include <boost/unordered_map.hpp>
 #endif
+#endif
 
 
 namespace pion {    // begin namespace pion
 
+#ifdef ASIO_STANDALONE
+    #define PION_HASH_MAP std::unordered_map
+    #define PION_HASH_MULTIMAP std::unordered_multimap
+    #define PION_HASH_STRING std::hash<std::string>
+    #define PION_HASH(TYPE) std::hash<TYPE>
+#else
 #if defined(PION_HAVE_UNORDERED_MAP)
     #define PION_HASH_MAP std::unordered_map
     #define PION_HASH_MULTIMAP std::unordered_multimap
@@ -69,6 +78,7 @@ namespace pion {    // begin namespace pion
     #define PION_HASH_STRING boost::hash<std::string>
     #define PION_HASH(TYPE) boost::hash<TYPE>
 #endif
+#endif
 
     /// case insensitive string equality predicate
     /// copied from boost.unordered hash_equality documentation
@@ -91,6 +101,13 @@ namespace pion {    // begin namespace pion
     {
         std::size_t operator()(std::string const& x) const
         {
+		#ifdef ASIO_STANDALONE
+            std::string s;
+			s.reserve( x.size() );
+			for ( auto c : x )
+				s.push_back( std::toupper( c ) );
+            return std::hash<std::string>()(s);
+		#else
             std::size_t seed = 0;
             std::locale locale;
             
@@ -101,6 +118,7 @@ namespace pion {    // begin namespace pion
             }
             
             return seed;
+		#endif
         }
     };
     

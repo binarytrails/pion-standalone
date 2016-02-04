@@ -9,8 +9,15 @@
 namespace pion
 {
 	using std::shared_ptr;
-	using std::noncopyable;
 	using std::enable_shared_from_this;
+	
+	class noncopyable
+	{
+		public:
+			noncopyable() = default;
+			virtual ~noncopyable() = default;
+			noncopyable( const noncopyable & ) = delete;
+	};
 }
 
 #else

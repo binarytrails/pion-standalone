@@ -37,7 +37,7 @@ namespace pion {    // begin namespace pion
     protected:
         inline void set_what_msg(const char * const msg = NULL, const std::string * const arg1 = NULL, const std::string * const arg2 = NULL, const std::string * const arg3 = NULL) const {
             std::ostringstream tmp;
-            tmp << ( msg ? msg : boost::units::detail::demangle(BOOST_EXCEPTION_DYNAMIC_TYPEID(*this).type_->name()) );
+            tmp << ( msg ? msg : PION_DEMANGLE_EXCEPTION(*this) );
             if (arg1 || arg2 || arg3) tmp << ':';
             if (arg1) tmp << ' ' << *arg1;
             if (arg2) tmp << ' ' << *arg2;
@@ -65,7 +65,7 @@ namespace pion {    // begin namespace pion
         if (se) {
             tmp << se->what();
         } else {
-            tmp << boost::units::detail::demangle(BOOST_EXCEPTION_DYNAMIC_TYPEID(e).type_->name());
+            tmp << PION_DEMANGLE_EXCEPTION(e);
         }
         if (be) {
             //char const * const * fn=pion::get_error_info<pion::throw_function>(*be);
