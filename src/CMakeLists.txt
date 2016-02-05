@@ -60,6 +60,26 @@ set(COMMON_HDR_FILES
     )
 source_group("include\\pion" FILES ${COMMON_HDR_FILES})
 
+set(UTILS_HDR_FILES
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_asio.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_assert.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_chrono.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_condition_variable.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_exception.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_filesystem.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_functional.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_memory.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_mutex.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_random.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_regex.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_stdint.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_string.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_system_error.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_thread.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_tribool.hpp
+    )
+source_group("include\\pion\\utils" FILES ${UTILS_HDR_FILES})
+
 
 set(SRC_FILES
     ${PROJECT_SOURCE_DIR}/admin_rights.cpp
@@ -101,6 +121,7 @@ source_group("src" FILES ${SRC_FILES})
 set(HDR_FILES
     ${HTTP_HDR_FILES}
     ${TCP_HDR_FILES}
+    ${UTILS_HDR_FILES}
     ${COMMON_HDR_FILES}
     ${TEST_HDR_FILES}
     ${SPDY_HEADERS}

@@ -6,7 +6,6 @@ requires boost at all.
 
 It still compiles with boost:
  - feature complete
- - cmake build only
  - support for some older version of boost has been removed
  - requires support for boost::function<> preferred syntax
  - all boost calls has been encapsulated in pion/utils
@@ -21,7 +20,6 @@ todo:
  - windows support
  - linux support
  - bsd support
- - make install
  - cmake build
 
 Original Readme follow:

@@ -9,4 +9,4 @@ pion_include_HEADERS = \
 
 EXTRA_DIST = config.hpp.win config.hpp.xcode config.hpp.in
 
-SUBDIRS = http spdy test tcp
+SUBDIRS = http spdy test tcp utils

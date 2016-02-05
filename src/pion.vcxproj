@@ -288,6 +288,22 @@
     <ClCompile Include="tcp_timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\pion\utils\pion_asio.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_assert.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_chrono.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_condition_variable.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_exception.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_filesystem.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_functional.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_memory.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_mutex.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_random.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_regex.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_stdint.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_string.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_system_error.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_thread.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_tribool.hpp" />
     <ClInclude Include="..\include\pion\admin_rights.hpp" />
     <ClInclude Include="..\include\pion\algorithm.hpp" />
     <ClInclude Include="..\include\pion\error.hpp" />
