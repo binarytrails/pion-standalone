@@ -15,20 +15,20 @@
 
 namespace pion {        // begin namespace pion
 namespace plugins {     // begin namespace plugins
-        
+
 ///
 /// This class has a corresponding create function (pion_create_AllowNothingService) and
 /// destroy function (pion_destroy_AllowNothingService), as required for use by plugin.
-/// 
+///
 class AllowNothingService : public pion::http::plugin_service
 {
 public:
-    AllowNothingService(void) {}
-    ~AllowNothingService() {}
+    AllowNothingService() = default;
+    ~AllowNothingService() = default;
     virtual void operator()(const pion::http::request_ptr& http_request_ptr,
                             const pion::tcp::connection_ptr& tcp_conn);
 };
-    
+
 }   // end namespace plugins
 }   // end namespace pion
 

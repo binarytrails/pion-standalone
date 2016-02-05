@@ -12,21 +12,13 @@
 
 #include <pion/config.hpp>
 #include <string>
-#include <pion/utils/pion_memory.hpp>
-#include <pion/utils/pion_functional.hpp>
+#include <memory>
+#include <functional>
 #include <pion/utils/pion_tribool.hpp>
-#include <pion/utils/pion_system_error.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <system_error>
+#include <mutex>
 #include <pion/logger.hpp>
 #include <pion/http/message.hpp>
-
-#ifdef ASIO_STANDALONE
-	#define BOOST_SYSTEM_NOEXCEPT noexcept
-#else
-#ifndef BOOST_SYSTEM_NOEXCEPT
-    #define BOOST_SYSTEM_NOEXCEPT BOOST_NOEXCEPT
-#endif
-#endif
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
@@ -39,18 +31,17 @@ class response;
 ///
 /// parser: parses HTTP messages
 ///
-class PION_API parser :
-    private pion::noncopyable
+class PION_API parser
 {
-
 public:
+	parser( const parser & ) = delete;
 
     /// maximum length for HTTP payload content
     static const std::size_t        DEFAULT_CONTENT_MAX;
 
     /// callback type used to consume payload content
-    typedef pion::function<void (const char *, std::size_t)>   payload_handler_t;
-    
+    typedef std::function<void (const char *, std::size_t)>   payload_handler_t;
+
     /// class-specific error code values
     enum error_value_t {
         ERROR_METHOD_CHAR = 1,
@@ -72,13 +63,13 @@ public:
         ERROR_MISSING_HEADER_DATA,
         ERROR_MISSING_TOO_MUCH_CONTENT,
     };
-    
+
     /// class-specific error category
     class error_category_t
-        : public pion::error_category
+        : public std::error_category
     {
     public:
-        const char *name() const BOOST_SYSTEM_NOEXCEPT { return "parser"; }
+        const char *name() const noexcept { return "parser"; }
         std::string message(int ev) const {
             switch (ev) {
             case ERROR_METHOD_CHAR:
@@ -131,7 +122,7 @@ public:
      */
     parser(const bool is_request, std::size_t max_content_length = DEFAULT_CONTENT_MAX)
         : m_logger(PION_GET_LOGGER("pion.http.parser")), m_is_request(is_request),
-        m_read_ptr(NULL), m_read_end_ptr(NULL), m_message_parse_state(PARSE_START),
+        m_read_ptr(nullptr), m_read_end_ptr(nullptr), m_message_parse_state(PARSE_START),
         m_headers_parse_state(is_request ? PARSE_METHOD_START : PARSE_HTTP_VERSION_H),
         m_chunked_content_parse_state(PARSE_CHUNK_SIZE_START), m_status_code(0),
         m_size_of_current_chunk(0), m_bytes_read_in_current_chunk(0),
@@ -142,7 +133,7 @@ public:
     {}
 
     /// default destructor
-    virtual ~parser() {}
+    virtual ~parser() = default;
 
     /**
      * parses an HTTP message including all payload content it might contain
@@ -155,7 +146,7 @@ public:
      *                        true = finished parsing HTTP message,
      *                        indeterminate = not yet finished parsing HTTP message
      */
-    pion::tribool parse(http::message& http_msg, pion::error_code& ec);
+    pion::tribool parse(http::message& http_msg, std::error_code& ec);
 
     /**
      * attempts to continue parsing despite having missed data (length is known but content is not)
@@ -170,7 +161,7 @@ public:
      *                        indeterminate = not yet finished parsing HTTP message
      */
     pion::tribool parse_missing_data(http::message& http_msg, std::size_t len,
-        pion::error_code& ec);
+        std::error_code& ec);
 
     /**
      * finishes parsing an HTTP response message
@@ -231,12 +222,12 @@ public:
      * @param http_msg the HTTP message object being parsed
      */
     inline void skip_header_parsing(http::message& http_msg) {
-        pion::error_code ec;
+        std::error_code ec;
         finish_header_parsing(http_msg, ec);
     }
-    
+
     /// resets the parser to its initial state
-    inline void reset(void) {
+    inline void reset() {
         m_message_parse_state = PARSE_START;
         m_headers_parse_state = (m_is_request ? PARSE_METHOD_START : PARSE_HTTP_VERSION_H);
         m_chunked_content_parse_state = PARSE_CHUNK_SIZE_START;
@@ -250,37 +241,37 @@ public:
     }
 
     /// returns true if there are no more bytes available in the read buffer
-    inline bool eof(void) const { return m_read_ptr == NULL || m_read_ptr >= m_read_end_ptr; }
+    inline bool eof() const { return m_read_ptr == nullptr || m_read_ptr >= m_read_end_ptr; }
 
     /// returns the number of bytes available in the read buffer
-    inline std::size_t bytes_available(void) const { return (eof() ? 0 : (std::size_t)(m_read_end_ptr - m_read_ptr)); } 
+    inline std::size_t bytes_available() const { return (eof() ? 0 : (std::size_t)(m_read_end_ptr - m_read_ptr)); }
 
     /// returns the number of bytes read during the last parse operation
-    inline std::size_t gcount(void) const { return m_bytes_last_read; }
+    inline std::size_t gcount() const { return m_bytes_last_read; }
 
     /// returns the total number of bytes read while parsing the HTTP message
-    inline std::size_t get_total_bytes_read(void) const { return m_bytes_total_read; }
+    inline std::size_t get_total_bytes_read() const { return m_bytes_total_read; }
 
     /// returns the total number of bytes read while parsing the payload content
-    inline std::size_t get_content_bytes_read(void) const { return m_bytes_content_read; }
+    inline std::size_t get_content_bytes_read() const { return m_bytes_content_read; }
 
     /// returns the maximum length for HTTP payload content
-    inline std::size_t get_max_content_length(void) const { return m_max_content_length; }
+    inline std::size_t get_max_content_length() const { return m_max_content_length; }
 
     /// returns the raw HTTP headers saved by the parser
-    inline const std::string& get_raw_headers(void) const { return m_raw_headers; }
+    inline const std::string& get_raw_headers() const { return m_raw_headers; }
 
     /// returns true if the parser is saving raw HTTP header contents
-    inline bool get_save_raw_headers(void) const { return m_save_raw_headers; }
+    inline bool get_save_raw_headers() const { return m_save_raw_headers; }
 
     /// returns true if parsing headers only
-    inline bool get_parse_headers_only(void) { return m_parse_headers_only; }
-    
+    inline bool get_parse_headers_only() { return m_parse_headers_only; }
+
     /// returns true if the parser is being used to parse an HTTP request
-    inline bool is_parsing_request(void) const { return m_is_request; }
+    inline bool is_parsing_request() const { return m_is_request; }
 
     /// returns true if the parser is being used to parse an HTTP response
-    inline bool is_parsing_response(void) const { return ! m_is_request; }
+    inline bool is_parsing_response() const { return ! m_is_request; }
 
     /// defines a callback function to be used for consuming payload content
     inline void set_payload_handler(payload_handler_t& h) { m_payload_handler = h; }
@@ -289,7 +280,7 @@ public:
     inline void set_max_content_length(std::size_t n) { m_max_content_length = n; }
 
     /// resets the maximum length for HTTP payload content to the default value
-    inline void reset_max_content_length(void) { m_max_content_length = DEFAULT_CONTENT_MAX; }
+    inline void reset_max_content_length() { m_max_content_length = DEFAULT_CONTENT_MAX; }
 
     /// sets parameter for saving raw HTTP header content
     inline void set_save_raw_headers(bool b) { m_save_raw_headers = b; }
@@ -298,7 +289,7 @@ public:
     inline void set_logger(logger log_ptr) { m_logger = log_ptr; }
 
     /// returns the logger currently in use
-    inline logger get_logger(void) { return m_logger; }
+    inline logger get_logger() { return m_logger; }
 
 
     /**
@@ -313,18 +304,18 @@ public:
      *
      * @return true if the URI was successfully parsed, false if there was an error
      */
-    static bool parse_uri(const std::string& uri, std::string& proto, 
-                         std::string& host, pion::uint16_t& port, std::string& path,
+    static bool parse_uri(const std::string& uri, std::string& proto,
+                         std::string& host, uint16_t& port, std::string& path,
                          std::string& query);
 
     /**
      * parse key-value pairs out of a url-encoded string
      * (i.e. this=that&a=value)
-     * 
+     *
      * @param dict dictionary for key-values pairs
      * @param ptr points to the start of the encoded string
      * @param len length of the encoded string, in bytes
-     * 
+     *
      * @return bool true if successful
      */
     static bool parse_url_encoded(ihash_multimap& dict,
@@ -344,16 +335,16 @@ public:
     static bool parse_multipart_form_data(ihash_multimap& dict,
                                           const std::string& content_type,
                                           const char *ptr, const std::size_t len);
-    
+
     /**
      * parse key-value pairs out of a "Cookie" request header
      * (i.e. this=that; a=value)
-     * 
+     *
      * @param dict dictionary for key-values pairs
      * @param ptr points to the start of the header string to be parsed
      * @param len length of the encoded string, in bytes
      * @param set_cookie_header set true if parsing Set-Cookie response header
-     * 
+     *
      * @return bool true if successful
      */
     static bool parse_cookie_header(ihash_multimap& dict,
@@ -363,11 +354,11 @@ public:
     /**
      * parse key-value pairs out of a "Cookie" request header
      * (i.e. this=that; a=value)
-     * 
+     *
      * @param dict dictionary for key-values pairs
      * @param cookie_header header string to be parsed
      * @param set_cookie_header set true if parsing Set-Cookie response header
-     * 
+     *
      * @return bool true if successful
      */
     static inline bool parse_cookie_header(ihash_multimap& dict,
@@ -379,10 +370,10 @@ public:
     /**
      * parse key-value pairs out of a url-encoded string
      * (i.e. this=that&a=value)
-     * 
+     *
      * @param dict dictionary for key-values pairs
      * @param query the encoded query string to be parsed
-     * 
+     *
      * @return bool true if successful
      */
     static inline bool parse_url_encoded(ihash_multimap& dict,
@@ -390,7 +381,7 @@ public:
     {
         return parse_url_encoded(dict, query.c_str(), query.size());
     }
-    
+
     /**
      * parse key-value pairs out of a multipart/form-data payload content
      * (http://www.ietf.org/rfc/rfc2388.txt)
@@ -407,7 +398,7 @@ public:
     {
         return parse_multipart_form_data(dict, content_type, form_data.c_str(), form_data.size());
     }
-    
+
     /**
      * should be called after parsing HTTP headers, to prepare for payload content parsing
      * available in the read buffer
@@ -421,7 +412,7 @@ public:
      *                        indeterminate = payload content is available to be parsed
      */
     pion::tribool finish_header_parsing(http::message& http_msg,
-                                         pion::error_code& ec);
+                                         std::error_code& ec);
 
     /**
      * parses an X-Forwarded-For HTTP header, and extracts from it an IP
@@ -433,10 +424,10 @@ public:
      * @return bool true if a public IP address was found and extracted
      */
     static bool parse_forwarded_for(const std::string& header, std::string& public_ip);
-    
+
     /// returns an instance of parser::error_category_t
-    static inline error_category_t& get_error_category(void) {
-        pion::call_once(m_instance_flag, parser::create_error_category);
+    static inline error_category_t& get_error_category() {
+        std::call_once(m_instance_flag, parser::create_error_category);
         return *m_error_category_ptr;
     }
 
@@ -444,10 +435,10 @@ public:
 protected:
 
     /// Called after we have finished parsing the HTTP message headers
-    virtual void finished_parsing_headers(const pion::error_code& /* ec */) {}
-    
+    virtual void finished_parsing_headers(const std::error_code& /* ec */) {}
+
     /**
-     * parses an HTTP message up to the end of the headers using bytes 
+     * parses an HTTP message up to the end of the headers using bytes
      * available in the read buffer
      *
      * @param http_msg the HTTP message object to populate from parsing
@@ -458,7 +449,7 @@ protected:
      *                        true = finished parsing HTTP headers,
      *                        indeterminate = not yet finished parsing HTTP headers
      */
-    pion::tribool parse_headers(http::message& http_msg, pion::error_code& ec);
+    pion::tribool parse_headers(http::message& http_msg, std::error_code& ec);
 
     /**
      * updates an http::message object with data obtained from parsing headers
@@ -479,21 +470,21 @@ protected:
      *                        indeterminate = message is not yet finished
      */
     pion::tribool parse_chunks(http::message::chunk_cache_t& chunk_buffers,
-        pion::error_code& ec);
+        std::error_code& ec);
 
     /**
-     * consumes payload content in the parser's read buffer 
+     * consumes payload content in the parser's read buffer
      *
      * @param http_msg the HTTP message object to consume content for
      * @param ec error_code contains additional information for parsing errors
-     *  
+     *
      * @return pion::tribool result of parsing:
      *                        false = message has an error,
      *                        true = finished parsing message,
      *                        indeterminate = message is not yet finished
      */
     pion::tribool consume_content(http::message& http_msg,
-        pion::error_code& ec);
+        std::error_code& ec);
 
     /**
      * consume the bytes available in the read buffer, converting them into
@@ -506,7 +497,7 @@ protected:
 
     /**
      * compute and sets a HTTP Message data integrity status
-     * @param http_msg target HTTP message 
+     * @param http_msg target HTTP message
      * @param msg_parsed_ok message parsing result
      */
     static void compute_msg_status(http::message& http_msg, bool msg_parsed_ok);
@@ -517,12 +508,12 @@ protected:
      * @param ec error code variable to define
      * @param ev error value to raise
      */
-    static inline void set_error(pion::error_code& ec, error_value_t ev) {
-        ec = pion::error_code(static_cast<int>(ev), get_error_category());
+    static inline void set_error(std::error_code& ec, error_value_t ev) {
+        ec = std::error_code(static_cast<int>(ev), get_error_category());
     }
 
     /// creates the unique parser error_category_t
-    static void create_error_category(void);
+    static void create_error_category();
 
 
     // misc functions used by the parsing functions
@@ -535,34 +526,34 @@ protected:
 
 
     /// maximum length for response status message
-    static const pion::uint32_t        STATUS_MESSAGE_MAX;
+    static const uint32_t        STATUS_MESSAGE_MAX;
 
     /// maximum length for the request method
-    static const pion::uint32_t        METHOD_MAX;
+    static const uint32_t        METHOD_MAX;
 
     /// maximum length for the resource requested
-    static const pion::uint32_t        RESOURCE_MAX;
+    static const uint32_t        RESOURCE_MAX;
 
     /// maximum length for the query string
-    static const pion::uint32_t        QUERY_STRING_MAX;
+    static const uint32_t        QUERY_STRING_MAX;
 
     /// maximum length for an HTTP header name
-    static const pion::uint32_t        HEADER_NAME_MAX;
+    static const uint32_t        HEADER_NAME_MAX;
 
     /// maximum length for an HTTP header value
-    static const pion::uint32_t        HEADER_VALUE_MAX;
+    static const uint32_t        HEADER_VALUE_MAX;
 
     /// maximum length for the name of a query string variable
-    static const pion::uint32_t        QUERY_NAME_MAX;
+    static const uint32_t        QUERY_NAME_MAX;
 
     /// maximum length for the value of a query string variable
-    static const pion::uint32_t        QUERY_VALUE_MAX;
+    static const uint32_t        QUERY_VALUE_MAX;
 
     /// maximum length for the name of a cookie name
-    static const pion::uint32_t        COOKIE_NAME_MAX;
+    static const uint32_t        COOKIE_NAME_MAX;
 
     /// maximum length for the value of a cookie; also used for path and domain
-    static const pion::uint32_t        COOKIE_VALUE_MAX;
+    static const uint32_t        COOKIE_VALUE_MAX;
 
 
     /// primary logging interface used by this class
@@ -607,9 +598,9 @@ private:
         PARSE_CHUNK_SIZE_START, PARSE_CHUNK_SIZE,
         PARSE_EXPECTING_IGNORED_TEXT_AFTER_CHUNK_SIZE,
         PARSE_EXPECTING_CR_AFTER_CHUNK_SIZE,
-        PARSE_EXPECTING_LF_AFTER_CHUNK_SIZE, PARSE_CHUNK, 
+        PARSE_EXPECTING_LF_AFTER_CHUNK_SIZE, PARSE_CHUNK,
         PARSE_EXPECTING_CR_AFTER_CHUNK, PARSE_EXPECTING_LF_AFTER_CHUNK,
-        PARSE_EXPECTING_FINAL_CR_OR_FOOTERS_AFTER_LAST_CHUNK, 
+        PARSE_EXPECTING_FINAL_CR_OR_FOOTERS_AFTER_LAST_CHUNK,
         PARSE_EXPECTING_FINAL_LF_AFTER_LAST_CHUNK
     };
 
@@ -622,12 +613,12 @@ private:
 
     /// the current state of parsing chunked content
     chunk_parse_state_t                 m_chunked_content_parse_state;
-    
+
     /// if defined, this function is used to consume payload content
     payload_handler_t                   m_payload_handler;
 
     /// Used for parsing the HTTP response status code
-    pion::uint16_t                     m_status_code;
+    uint16_t                     m_status_code;
 
     /// Used for parsing the HTTP response status message
     std::string                         m_status_message;
@@ -673,7 +664,7 @@ private:
 
     /// maximum length for HTTP payload content
     std::size_t                         m_max_content_length;
-    
+
     /// if true, then only HTTP headers will be parsed (no content parsing)
     bool                                m_parse_headers_only;
 
@@ -682,9 +673,9 @@ private:
 
     /// points to a single and unique instance of the parser error_category_t
     static error_category_t *           m_error_category_ptr;
-        
+
     /// used to ensure thread safety of the parser error_category_t
-    static pion::once_flag             m_instance_flag;
+    static std::once_flag             m_instance_flag;
 };
 
 

@@ -16,12 +16,12 @@ using namespace pion;
 namespace pion {        // begin namespace pion
 namespace plugins {     // begin namespace plugins
 
-    
+
 void AllowNothingService::operator()(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn)
 {
     static const std::string DENY_HTML = "<html><body>No, you can't.</body></html>";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_METHOD_NOT_ALLOWED);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_METHOD_NOT_ALLOWED);
 
@@ -37,13 +37,13 @@ void AllowNothingService::operator()(const http::request_ptr& http_request_ptr, 
     writer->send();
 }
 
-    
+
 }   // end namespace plugins
 }   // end namespace pion
 
 
 /// creates new AllowNothingService objects
-extern "C" PION_PLUGIN pion::plugins::AllowNothingService *pion_create_AllowNothingService(void)
+extern "C" PION_PLUGIN pion::plugins::AllowNothingService *pion_create_AllowNothingService()
 {
     return new pion::plugins::AllowNothingService();
 }

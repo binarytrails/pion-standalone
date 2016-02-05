@@ -14,11 +14,11 @@
 
 ///
 /// This class has a corresponding create function (pion_create_hasCreateButNoDestroy) but no corresponding destroy function.
-/// 
+///
 class hasCreateButNoDestroy : public InterfaceStub
 {
 public:
-    hasCreateButNoDestroy(void) {}
+    hasCreateButNoDestroy() {}
     ~hasCreateButNoDestroy() {}
 };
 

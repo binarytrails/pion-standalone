@@ -13,7 +13,7 @@
 #include <pion/config.hpp>
 #include <map>
 #include <string>
-#include <pion/utils/pion_random.hpp>
+#include <random>
 #include <pion/http/auth.hpp>
 
 
@@ -29,7 +29,7 @@ class PION_API cookie_auth :
     public http::auth
 {
 public:
-    
+
     /**
      * default constructor
      *
@@ -41,22 +41,22 @@ public:
      * @param redirect - if not empty, URL for redirection in case of authentication failure
      *                  if empty - send code 401 on authentication failure
      */
-    cookie_auth(user_manager_ptr userManager, 
+    cookie_auth(user_manager_ptr userManager,
         const std::string& login="/login",
         const std::string& logout="/logout",
         const std::string& redirect="");
-    
+
     /// virtual destructor
-    virtual ~cookie_auth() {}
-    
+    virtual ~cookie_auth() = default;
+
     /**
-     * attempts to validate authentication of a new HTTP request. 
-     * If request valid, pointer to user identity object (if any) will be preserved in 
-     * the request and return "true". 
+     * attempts to validate authentication of a new HTTP request.
+     * If request valid, pointer to user identity object (if any) will be preserved in
+     * the request and return "true".
      * If request not authenticated, appropriate response is sent over tcp_conn
      * and return "false";
      *
-     * Note: if request matches "login" resource, then login sequences attempted. 
+     * Note: if request matches "login" resource, then login sequences attempted.
      * If "name" and "pass" attributes match user definition, a random cookie is created
      * and associated with given user session. If request contains "url" attribute,
      * then page redirection response returned. Otherwise - empty 204 response.
@@ -64,10 +64,10 @@ public:
      * @param http_request_ptr the new HTTP request to handle
      * @param tcp_conn the TCP connection that has the new request
      *
-     * @return true if request valid and user identity inserted into request 
+     * @return true if request valid and user identity inserted into request
      */
     virtual bool handle_request(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn);
-    
+
     /**
      * sets a configuration option
      * Valid options:
@@ -83,7 +83,7 @@ public:
      */
     virtual void set_option(const std::string& name, const std::string& value);
 
-    
+
 protected:
 
     /**
@@ -103,9 +103,9 @@ protected:
      * @param tcp_conn the TCP connection that has the new request
      */
     void handle_unauthorized(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn);
-    
+
     /**
-     * used to send redirection responses 
+     * used to send redirection responses
      *
      * @param http_request_ptr the new HTTP request to handle
      * @param tcp_conn the TCP connection that has the new request
@@ -125,11 +125,11 @@ protected:
     /**
      * Cache expiration cleanup. (Call it periodically)
      */
-    void expire_cache(const pion::chrono::system_clock::time_point &time_now);
+    void expire_cache(const std::chrono::system_clock::time_point &time_now);
 
-    
+
 private:
-    
+
     /// number of seconds after which entries in the user cache will be expired
     static const unsigned int   CACHE_EXPIRATION;
 
@@ -139,32 +139,32 @@ private:
     /// name of cookie used for authentication
     static const std::string    AUTH_COOKIE_NAME;
 
-    /// value of "login" resource 
-    std::string                 m_login; 
+    /// value of "login" resource
+    std::string                 m_login;
 
-    /// value of "logout" resource 
-    std::string                 m_logout; 
+    /// value of "logout" resource
+    std::string                 m_logout;
 
-    /// value of "redirection" resource 
+    /// value of "redirection" resource
     std::string                 m_redirect;
-    
+
     /// random number generator used for cookie generation
-    pion::mt19937              m_random_gen;
+    std::mt19937              m_random_gen;
 
     /// random dice that uses m_random_gen to produce ints within a range
-    pion::uniform_int_distribution<>        m_random_die;
+    std::uniform_int_distribution<>        m_random_die;
 
     /// time of the last cache clean up
-    pion::chrono::system_clock::time_point    m_cache_cleanup_time;
-        
+    std::chrono::system_clock::time_point    m_cache_cleanup_time;
+
     /// cache of users that are currently active
     user_cache_type             m_user_cache;
-    
+
     /// mutex used to protect access to the user cache
-    mutable pion::mutex        m_cache_mutex;
+    mutable std::mutex        m_cache_mutex;
 };
 
-    
+
 }   // end namespace http
 }   // end namespace pion
 

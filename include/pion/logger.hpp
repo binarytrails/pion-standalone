@@ -78,7 +78,7 @@
     #include <log4cplus/loggingmacros.h>
 
     #include <boost/circular_buffer.hpp>
-    #include <pion/utils/pion_mutex.hpp>
+    #include <mutex>
 
     #if defined(_MSC_VER) && !defined(PION_CMAKE_BUILD)
         #if defined _DEBUG
@@ -107,10 +107,10 @@
         class circular_buffer_appender : public log4cplus::Appender
         {
         public:
-            typedef boost::circular_buffer<log4cplus::spi::InternalLoggingEvent> LogEventBuffer;
+            typedef pion::circular_buffer<log4cplus::spi::InternalLoggingEvent> LogEventBuffer;
 
             // default constructor and destructor
-            circular_buffer_appender(void) : m_log_events(1000) {};
+            circular_buffer_appender() : m_log_events(1000) {};
             virtual ~circular_buffer_appender() { destructorImpl(); }
 
             /// returns an iterator to the log events in the buffer
@@ -123,7 +123,7 @@
             virtual void close() {}
         protected:
             virtual void append(const log4cplus::spi::InternalLoggingEvent& event) {
-                pion::unique_lock<pion::mutex> log_lock(m_log_mutex);
+                std::lock_guard<std::mutex> log_lock(m_log_mutex);
                 m_log_events.push_back(*event.clone());
             }
 
@@ -132,7 +132,7 @@
             LogEventBuffer  m_log_events;
 
             /// mutex to make class thread-safe
-            pion::mutex    m_log_mutex;
+            std::mutex    m_log_mutex;
         };
     }
 
@@ -240,8 +240,8 @@
                 LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_WARN,
                 LOG_LEVEL_ERROR, LOG_LEVEL_FATAL
             };
-            ~logger() {}
-            logger(void) : m_name("pion") {}
+            ~logger() = default
+            logger() : m_name("pion") {}
             logger(const std::string& name) : m_name(name) {}
             logger(const logger& p) : m_name(p.m_name) {}
             static void shutdown() {}

@@ -7,9 +7,9 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <asio.hpp>
+#include <functional>
+#include <mutex>
 #include <pion/admin_rights.hpp>
 #include <pion/tcp/server.hpp>
 
@@ -17,7 +17,7 @@
 namespace pion {    // begin namespace pion
 namespace tcp {     // begin namespace tcp
 
-    
+
 // tcp::server member functions
 
 server::server(scheduler& sched, const unsigned int tcp_port)
@@ -25,19 +25,19 @@ server::server(scheduler& sched, const unsigned int tcp_port)
     m_active_scheduler(sched),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(pion::asio::ssl::context::sslv23),
+    m_ssl_context(asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
-    m_endpoint(pion::asio::ip::tcp::v4(), tcp_port), m_ssl_flag(false), m_is_listening(false)
+    m_endpoint(asio::ip::tcp::v4(), tcp_port), m_ssl_flag(false), m_is_listening(false)
 {}
-    
-server::server(scheduler& sched, const pion::asio::ip::tcp::endpoint& endpoint)
+
+server::server(scheduler& sched, const asio::ip::tcp::endpoint& endpoint)
     : m_logger(PION_GET_LOGGER("pion.tcp.server")),
     m_active_scheduler(sched),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(pion::asio::ssl::context::sslv23),
+    m_ssl_context(asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
@@ -49,33 +49,33 @@ server::server(const unsigned int tcp_port)
     m_default_scheduler(), m_active_scheduler(m_default_scheduler),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(pion::asio::ssl::context::sslv23),
+    m_ssl_context(asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
-    m_endpoint(pion::asio::ip::tcp::v4(), tcp_port), m_ssl_flag(false), m_is_listening(false)
+    m_endpoint(asio::ip::tcp::v4(), tcp_port), m_ssl_flag(false), m_is_listening(false)
 {}
 
-server::server(const pion::asio::ip::tcp::endpoint& endpoint)
+server::server(const asio::ip::tcp::endpoint& endpoint)
     : m_logger(PION_GET_LOGGER("pion.tcp.server")),
     m_default_scheduler(), m_active_scheduler(m_default_scheduler),
     m_tcp_acceptor(m_active_scheduler.get_io_service()),
 #ifdef PION_HAVE_SSL
-    m_ssl_context(pion::asio::ssl::context::sslv23),
+    m_ssl_context(asio::ssl::context::sslv23),
 #else
     m_ssl_context(0),
 #endif
     m_endpoint(endpoint), m_ssl_flag(false), m_is_listening(false)
 {}
-    
-void server::start(void)
+
+void server::start()
 {
     // lock mutex for thread safety
-    pion::unique_lock<pion::mutex> server_lock(m_mutex);
+    std::unique_lock<std::mutex> server_lock(m_mutex);
 
     if (! m_is_listening) {
         PION_LOG_INFO(m_logger, "Starting server on port " << get_port());
-        
+
         before_starting();
 
         // configure the acceptor service
@@ -86,7 +86,7 @@ void server::start(void)
             // allow the acceptor to reuse the address (i.e. SO_REUSEADDR)
             // ...except when running not on Windows - see http://msdn.microsoft.com/en-us/library/ms740621%28VS.85%29.aspx
 #ifndef PION_WIN32
-            m_tcp_acceptor.set_option(pion::asio::ip::tcp::acceptor::reuse_address(true));
+            m_tcp_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
 #endif
             m_tcp_acceptor.bind(m_endpoint);
             if (m_endpoint.port() == 0) {
@@ -104,7 +104,7 @@ void server::start(void)
         // unlock the mutex since listen() requires its own lock
         server_lock.unlock();
         listen();
-        
+
         // notify the thread scheduler that we need it now
         m_active_scheduler.add_active_user();
     }
@@ -113,22 +113,22 @@ void server::start(void)
 void server::stop(bool wait_until_finished)
 {
     // lock mutex for thread safety
-    pion::unique_lock<pion::mutex> server_lock(m_mutex);
+    std::unique_lock<std::mutex> server_lock(m_mutex);
 
     if (m_is_listening) {
         PION_LOG_INFO(m_logger, "Shutting down server on port " << get_port());
-    
+
         m_is_listening = false;
 
         // this terminates any connections waiting to be accepted
         m_tcp_acceptor.close();
-        
+
         if (! wait_until_finished) {
             // this terminates any other open connections
             std::for_each(m_conn_pool.begin(), m_conn_pool.end(),
-                          pion::bind(&connection::close, pion::placeholders::_1));
+                          std::bind(&connection::close, std::placeholders::_1));
         }
-    
+
         // wait for all pending connections to complete
         while (! m_conn_pool.empty()) {
             // try to prun connections that didn't finish cleanly
@@ -138,19 +138,19 @@ void server::stop(bool wait_until_finished)
             PION_LOG_INFO(m_logger, "Waiting for open connections to finish");
             scheduler::sleep(m_no_more_connections, server_lock, 0, 250000000);
         }
-        
+
         // notify the thread scheduler that we no longer need it
         m_active_scheduler.remove_active_user();
-        
+
         // all done!
         after_stopping();
         m_server_has_stopped.notify_all();
     }
 }
 
-void server::join(void)
+void server::join()
 {
-    pion::unique_lock<pion::mutex> server_lock(m_mutex);
+    std::unique_lock<std::mutex> server_lock(m_mutex);
     while (m_is_listening) {
         // sleep until server_has_stopped condition is signaled
         m_server_has_stopped.wait(server_lock);
@@ -162,42 +162,42 @@ void server::set_ssl_key_file(const std::string& pem_key_file)
     // configure server for SSL
     set_ssl_flag(true);
 #ifdef PION_HAVE_SSL
-    m_ssl_context.set_options(pion::asio::ssl::context::default_workarounds
-                              | pion::asio::ssl::context::no_sslv2
-                              | pion::asio::ssl::context::single_dh_use);
-    m_ssl_context.use_certificate_file(pem_key_file, pion::asio::ssl::context::pem);
-    m_ssl_context.use_private_key_file(pem_key_file, pion::asio::ssl::context::pem);
+    m_ssl_context.set_options(asio::ssl::context::default_workarounds
+                              | asio::ssl::context::no_sslv2
+                              | asio::ssl::context::single_dh_use);
+    m_ssl_context.use_certificate_file(pem_key_file, asio::ssl::context::pem);
+    m_ssl_context.use_private_key_file(pem_key_file, asio::ssl::context::pem);
 #endif
 }
 
-void server::listen(void)
+void server::listen()
 {
     // lock mutex for thread safety
-    pion::unique_lock<pion::mutex> server_lock(m_mutex);
-    
+    std::unique_lock<std::mutex> server_lock(m_mutex);
+
     if (m_is_listening) {
         // create a new TCP connection object
         tcp::connection_ptr new_connection(connection::create(get_io_service(),
                                                               m_ssl_context, m_ssl_flag,
-                                                              pion::bind(&server::finish_connection,
-                                                                          this, pion::placeholders::_1)));
-        
+                                                              std::bind(&server::finish_connection,
+                                                                          this, std::placeholders::_1)));
+
         // prune connections that finished uncleanly
         prune_connections();
 
         // keep track of the object in the server's connection pool
         m_conn_pool.insert(new_connection);
-        
+
         // use the object to accept a new connection
         new_connection->async_accept(m_tcp_acceptor,
-                                     pion::bind(&server::handle_accept,
+                                     std::bind(&server::handle_accept,
                                                  this, new_connection,
-                                                 pion::placeholders::_1));
+                                                 std::placeholders::_1));
     }
 }
 
 void server::handle_accept(const tcp::connection_ptr& tcp_conn,
-                             const pion::error_code& accept_error)
+                             const std::error_code& accept_error)
 {
     if (accept_error) {
         // an error occured while trying to a accept a new connection
@@ -215,13 +215,13 @@ void server::handle_accept(const tcp::connection_ptr& tcp_conn,
         // schedule the acceptance of another new connection
         // (this returns immediately since it schedules it as an event)
         if (m_is_listening) listen();
-        
+
         // handle the new connection
 #ifdef PION_HAVE_SSL
         if (tcp_conn->get_ssl_flag()) {
-            tcp_conn->async_handshake_server(pion::bind(&server::handle_ssl_handshake,
+            tcp_conn->async_handshake_server(std::bind(&server::handle_ssl_handshake,
                                                          this, tcp_conn,
-                                                         pion::asio::placeholders::error));
+                                                         std::placeholders::_1));
         } else
 #endif
             // not SSL -> call the handler immediately
@@ -230,7 +230,7 @@ void server::handle_accept(const tcp::connection_ptr& tcp_conn,
 }
 
 void server::handle_ssl_handshake(const tcp::connection_ptr& tcp_conn,
-                                   const pion::error_code& handshake_error)
+                                   const std::error_code& handshake_error)
 {
     if (handshake_error) {
         // an error occured while trying to establish the SSL connection
@@ -246,15 +246,15 @@ void server::handle_ssl_handshake(const tcp::connection_ptr& tcp_conn,
 
 void server::finish_connection(const tcp::connection_ptr& tcp_conn)
 {
-    pion::unique_lock<pion::mutex> server_lock(m_mutex);
+    std::unique_lock<std::mutex> server_lock(m_mutex);
     if (m_is_listening && tcp_conn->get_keep_alive()) {
-        
+
         // keep the connection alive
         handle_connection(tcp_conn);
 
     } else {
         PION_LOG_DEBUG(m_logger, "Closing connection on port " << get_port());
-        
+
         // remove the connection from the server's management pool
         ConnectionPool::iterator conn_itr = m_conn_pool.find(tcp_conn);
         if (conn_itr != m_conn_pool.end())
@@ -266,7 +266,7 @@ void server::finish_connection(const tcp::connection_ptr& tcp_conn)
     }
 }
 
-std::size_t server::prune_connections(void)
+std::size_t server::prune_connections()
 {
     // assumes that a server lock has already been acquired
     ConnectionPool::iterator conn_itr = m_conn_pool.begin();
@@ -286,9 +286,9 @@ std::size_t server::prune_connections(void)
     return m_conn_pool.size();
 }
 
-std::size_t server::get_connections(void) const
+std::size_t server::get_connections() const
 {
-    pion::unique_lock<pion::mutex> server_lock(m_mutex);
+    std::unique_lock<std::mutex> server_lock(m_mutex);
     return (m_is_listening ? (m_conn_pool.size() - 1) : m_conn_pool.size());
 }
 

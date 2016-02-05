@@ -15,8 +15,8 @@
 #include <string>
 #include <cstdio>
 #include <cstring>
-#include <pion/utils/pion_memory.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <memory>
+#include <mutex>
 #include <pion/error.hpp>
 
 #ifdef PION_HAVE_SSL
@@ -34,10 +34,10 @@ namespace pion {    // begin namespace pion
 ///
 /// user: base class to store user credentials
 ///
-class user :
-    private pion::noncopyable
+class user
 {
 public:
+	user( const user & ) = delete;
 
     /// construct a new user object
     user(std::string const &username) :
@@ -58,7 +58,7 @@ public:
     }
 
     /// virtual destructor
-    virtual ~user() {}
+    virtual ~user() = default;
 
     /// returns user name as a string
     std::string const & get_username() const { return m_username; }
@@ -89,7 +89,7 @@ public:
     }
 
     /// sets password credentials for given user
-    virtual void set_password(const std::string& password) { 
+    virtual void set_password(const std::string& password) {
 #ifdef PION_HAVE_SSL
         // store encrypted hash value
         SHA256((const unsigned char *)password.data(), password.size(), m_password_hash);
@@ -103,7 +103,7 @@ public:
             m_password += buf;
         }
 #else
-        m_password = password; 
+        m_password = password;
 #endif
     }
 
@@ -159,26 +159,26 @@ protected:
 };
 
 /// data type for a user  pointer
-typedef pion::shared_ptr<user> user_ptr;
+typedef std::shared_ptr<user> user_ptr;
 
 
 ///
 /// user_manager base class for user container/manager
 ///
-class user_manager :
-    private pion::noncopyable
+class user_manager
 {
 public:
+	user_manager( const user_manager & ) = delete;
 
     /// construct a new user_manager object
-    user_manager(void) {}
+    user_manager() = default;
 
     /// virtual destructor
-    virtual ~user_manager() {}
+    virtual ~user_manager() = default;
 
     /// returns true if no users are defined
-    inline bool empty(void) const {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+    inline bool empty() const {
+        std::unique_lock<std::mutex> lock(m_mutex);
         return m_users.empty();
     }
 
@@ -193,7 +193,7 @@ public:
     virtual bool add_user(const std::string &username,
         const std::string &password)
     {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i!=m_users.end())
             return false;
@@ -213,7 +213,7 @@ public:
     virtual bool update_user(const std::string &username,
         const std::string &password)
     {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i==m_users.end())
             return false;
@@ -233,7 +233,7 @@ public:
     virtual bool add_user_hash(const std::string &username,
         const std::string &password_hash)
     {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i!=m_users.end())
             return false;
@@ -254,7 +254,7 @@ public:
     virtual bool update_user_hash(const std::string &username,
         const std::string &password_hash)
     {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i==m_users.end())
             return false;
@@ -264,12 +264,12 @@ public:
 #endif
 
     /**
-     * used to remove given user 
+     * used to remove given user
      *
      * @return false if no user with such username
      */
     virtual bool remove_user(const std::string &username) {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::iterator i = m_users.find(username);
         if (i==m_users.end())
             return false;
@@ -281,7 +281,7 @@ public:
      * Used to locate user object by username
      */
     virtual user_ptr get_user(const std::string &username) {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::const_iterator i = m_users.find(username);
         if (i==m_users.end())
             return user_ptr();
@@ -293,7 +293,7 @@ public:
      * Used to locate user object by username and password
      */
     virtual user_ptr get_user(const std::string& username, const std::string& password) {
-        pion::unique_lock<pion::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         user_map_t::const_iterator i = m_users.find(username);
         if (i==m_users.end() || !i->second->match_password(password))
             return user_ptr();
@@ -309,14 +309,14 @@ protected:
 
 
     /// mutex used to protect access to the user list
-    mutable pion::mutex    m_mutex;
+    mutable std::mutex    m_mutex;
 
     /// user records container
     user_map_t              m_users;
 };
 
 /// data type for a user_manager pointer
-typedef pion::shared_ptr<user_manager>  user_manager_ptr;
+typedef std::shared_ptr<user_manager>  user_manager_ptr;
 
 
 }   // end namespace pion

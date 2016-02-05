@@ -11,10 +11,8 @@
 
 #if defined(PION_USE_LOG4CXX)
     #include <log4cxx/spi/loggingevent.h>
-    #include <pion/utils/pion_string.hpp>
 #elif defined(PION_USE_LOG4CPLUS)
     #include <log4cplus/spi/loggingevent.h>
-    #include <pion/utils/pion_string.hpp>
 #elif defined(PION_USE_LOG4CPP)
     #include <log4cpp/BasicLayout.hh>
 #endif
@@ -35,13 +33,13 @@ const unsigned int      LogServiceAppender::DEFAULT_MAX_EVENTS = 25;
 // LogServiceAppender member functions
 
 #if defined(PION_USE_LOG4CPP)
-LogServiceAppender::LogServiceAppender(void)
+LogServiceAppender::LogServiceAppender()
     : log4cpp::AppenderSkeleton("LogServiceAppender"),
     m_max_events(DEFAULT_MAX_EVENTS), m_num_events(0),
     m_layout_ptr(new log4cpp::BasicLayout())
     {}
 #else
-LogServiceAppender::LogServiceAppender(void)
+LogServiceAppender::LogServiceAppender()
     : m_max_events(DEFAULT_MAX_EVENTS), m_num_events(0)
     {}
 #endif
@@ -58,7 +56,7 @@ LogServiceAppender::~LogServiceAppender()
 void LogServiceAppender::append(const log4cxx::spi::LoggingEventPtr& event)
 {
     // custom layouts is not supported for log4cxx library
-    std::string formatted_string(boost::lexical_cast<std::string>(event->getTimeStamp()));
+    std::string formatted_string(std::to_string(event->getTimeStamp()));
     formatted_string += ' ';
     formatted_string += event->getLevel()->toString();
     formatted_string += ' ';
@@ -72,7 +70,7 @@ void LogServiceAppender::append(const log4cxx::spi::LoggingEventPtr& event)
 void LogServiceAppender::append(const log4cplus::spi::InternalLoggingEvent& event)
 {
     // custom layouts is not supported for log4cplus library
-    std::string formatted_string(boost::lexical_cast<std::string>(event.getTimestamp().sec()));
+    std::string formatted_string(std::to_string(event.getTimestamp().sec()));
     formatted_string += ' ';
     formatted_string += m_log_level_manager.toString(event.getLogLevel());
     formatted_string += ' ';
@@ -92,7 +90,7 @@ void LogServiceAppender::_append(const log4cpp::LoggingEvent& event)
 
 void LogServiceAppender::addLogString(const std::string& log_string)
 {
-    pion::unique_lock<pion::mutex> log_lock(m_log_mutex);
+    std::unique_lock<std::mutex> log_lock(m_log_mutex);
     m_log_events.push_back(log_string);
     ++m_num_events;
     while (m_num_events > m_max_events) {
@@ -104,7 +102,7 @@ void LogServiceAppender::addLogString(const std::string& log_string)
 void LogServiceAppender::writeLogEvents(const pion::http::response_writer_ptr& writer)
 {
 #if defined(PION_USE_LOG4CXX) || defined(PION_USE_LOG4CPLUS) || defined(PION_USE_LOG4CPP)
-    pion::unique_lock<pion::mutex> log_lock(m_log_mutex);
+    std::unique_lock<std::mutex> log_lock(m_log_mutex);
     for (std::list<std::string>::const_iterator i = m_log_events.begin();
          i != m_log_events.end(); ++i)
     {
@@ -120,7 +118,7 @@ void LogServiceAppender::writeLogEvents(const pion::http::response_writer_ptr& w
 
 // LogService member functions
 
-LogService::LogService(void)
+LogService::LogService()
     : m_log_appender_ptr(new LogServiceAppender())
 {
 #if defined(PION_USE_LOG4CXX)
@@ -155,7 +153,7 @@ void LogService::operator()(const http::request_ptr& http_request_ptr, const tcp
 {
     // Set Content-type to "text/plain" (plain ascii text)
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                                   pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                                   std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_content_type(http::types::CONTENT_TYPE_TEXT);
     getLogAppender().writeLogEvents(writer);
     writer->send();
@@ -167,7 +165,7 @@ void LogService::operator()(const http::request_ptr& http_request_ptr, const tcp
 
 
 /// creates new LogService objects
-extern "C" PION_PLUGIN pion::plugins::LogService *pion_create_LogService(void)
+extern "C" PION_PLUGIN pion::plugins::LogService *pion_create_LogService()
 {
     return new pion::plugins::LogService();
 }

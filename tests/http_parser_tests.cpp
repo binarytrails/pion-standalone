@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE(testParseHttpUri)
     BOOST_CHECK_EQUAL(query, "");
 
     uri = "http://www.cloudmeter.com";
-    
+
     BOOST_CHECK(http::parser::parse_uri(uri, proto, host, port, path, query));
     BOOST_CHECK_EQUAL(proto, "http");
     BOOST_CHECK_EQUAL(host, "www.cloudmeter.com");
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(testParseHttpUri)
     BOOST_CHECK_EQUAL(query, "");
 
     uri = "http://www.cloudmeter.com:8000";
-    
+
     BOOST_CHECK(http::parser::parse_uri(uri, proto, host, port, path, query));
     BOOST_CHECK_EQUAL(proto, "http");
     BOOST_CHECK_EQUAL(host, "www.cloudmeter.com");
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(testParseHttpUri)
     BOOST_CHECK_EQUAL(query, "");
 
     uri = "http://www.cloudmeter.com:8000/path/to/file.txt";
-    
+
     BOOST_CHECK(http::parser::parse_uri(uri, proto, host, port, path, query));
     BOOST_CHECK_EQUAL(proto, "http");
     BOOST_CHECK_EQUAL(host, "www.cloudmeter.com");
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(testParseHttpUri)
     BOOST_CHECK_EQUAL(query, "");
 
     uri = "http://www.cloudmeter.com:8000/path/to/file.txt?and=query";
-    
+
     BOOST_CHECK(http::parser::parse_uri(uri, proto, host, port, path, query));
     BOOST_CHECK_EQUAL(proto, "http");
     BOOST_CHECK_EQUAL(host, "www.cloudmeter.com");
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(testParseQueryStringWithMultipleValues)
     ihash_multimap params;
     BOOST_REQUIRE(http::parser::parse_url_encoded(params, QUERY_STRING));
     BOOST_REQUIRE_EQUAL(params.size(), 4UL);
-    
+
     std::pair<ihash_multimap::const_iterator,ihash_multimap::const_iterator> range;
 
     range = params.equal_range("var1");
@@ -139,16 +139,16 @@ BOOST_AUTO_TEST_CASE(testParseQueryStringWithCommaSeparatedValues)
     ihash_multimap params;
     BOOST_REQUIRE(http::parser::parse_url_encoded(params, QUERY_STRING));
     BOOST_REQUIRE_EQUAL(params.size(), 4UL);
-    
+
     std::pair<ihash_multimap::const_iterator,ihash_multimap::const_iterator> range;
-    
+
     range = params.equal_range("var1");
     BOOST_CHECK(range.first != range.second);
     BOOST_CHECK(range.first->second == "10" || range.first->second == "30");
     BOOST_REQUIRE(++(range.first) != range.second);
     BOOST_CHECK(range.first->second == "10" || range.first->second == "30");
     BOOST_CHECK(++(range.first) == range.second);
-    
+
     range = params.equal_range("var2");
     BOOST_CHECK(range.first != range.second);
     BOOST_CHECK(range.first->second == "20" || range.first->second == "40");
@@ -163,9 +163,9 @@ BOOST_AUTO_TEST_CASE(testParseQueryStringWithEqualInValue)
     ihash_multimap params;
     BOOST_REQUIRE(http::parser::parse_url_encoded(params, QUERY_STRING));
     BOOST_CHECK_EQUAL(params.size(), 3UL);
-    
+
     std::pair<ihash_multimap::const_iterator,ihash_multimap::const_iterator> range;
-    
+
     ihash_multimap::const_iterator i = params.find("time");
     BOOST_REQUIRE(i != params.end());
     BOOST_CHECK_EQUAL(i->second, "1363409375");
@@ -537,10 +537,10 @@ BOOST_AUTO_TEST_CASE(testHTTPParserSimpleResponseWithZeroMaxSize)
 
 BOOST_AUTO_TEST_CASE(testHTTPParser_MultipleResponseFrames)
 {
-    const unsigned char* frames[] = { resp2_frame0, resp2_frame1, resp2_frame2, 
+    const unsigned char* frames[] = { resp2_frame0, resp2_frame1, resp2_frame2,
             resp2_frame3, resp2_frame4, resp2_frame5, resp2_frame6 };
 
-    size_t sizes[] = { sizeof(resp2_frame0), sizeof(resp2_frame1), sizeof(resp2_frame2), 
+    size_t sizes[] = { sizeof(resp2_frame0), sizeof(resp2_frame1), sizeof(resp2_frame2),
             sizeof(resp2_frame3), sizeof(resp2_frame4), sizeof(resp2_frame5), sizeof(resp2_frame6) };
 
     int frame_cnt = sizeof(frames)/sizeof(frames[0]);
@@ -575,18 +575,18 @@ BOOST_AUTO_TEST_CASE(testHTTPParserWithSemicolons)
     http::parser request_parser(true);
     request_parser.set_read_buffer((const char*)chunked_request_with_semicolon,
                                    sizeof(chunked_request_with_semicolon));
-    
+
     http::request http_request;
     boost::system::error_code ec;
     BOOST_CHECK(request_parser.parse(http_request, ec));
     BOOST_CHECK(!ec);
-    
+
     // The content length should be 15 and the ignored data after ';'
     // should not be added to content length
     BOOST_CHECK_EQUAL(http_request.get_content_length(), 15UL);
     BOOST_CHECK_EQUAL(request_parser.get_total_bytes_read(), sizeof(chunked_request_with_semicolon));
     BOOST_CHECK_EQUAL(request_parser.get_content_bytes_read(), 48UL);
-    
+
 }
 
 BOOST_AUTO_TEST_CASE(testHTTPParserWithFooters)
@@ -594,17 +594,17 @@ BOOST_AUTO_TEST_CASE(testHTTPParserWithFooters)
     http::parser request_parser(true);
     request_parser.set_read_buffer((const char*)chunked_request_with_footers,
                                    sizeof(chunked_request_with_footers));
-    
+
     http::request http_request;
     boost::system::error_code ec;
     BOOST_CHECK(request_parser.parse(http_request, ec));
     BOOST_CHECK(!ec);
-    
+
     BOOST_CHECK_EQUAL(http_request.get_content_length(), 15UL);
     BOOST_CHECK_EQUAL(request_parser.get_total_bytes_read(), sizeof(chunked_request_with_footers));
     BOOST_CHECK_EQUAL(request_parser.get_content_bytes_read(), 28UL);
     BOOST_CHECK_EQUAL(http_request.get_header("Transfer-Encoding"), "chunked");
-    
+
     // Check if the footers are added as a part of the HTTP Data
     BOOST_CHECK_EQUAL(http_request.get_header("some-footer"), "some-value");
     BOOST_CHECK_EQUAL(http_request.get_header("another-footer"), "another-value");
@@ -615,21 +615,21 @@ BOOST_AUTO_TEST_CASE(testHTTPParserWithErrorInFooters)
     http::parser request_parser(true);
     request_parser.set_read_buffer((const char*)chunked_request_with_error_in_footers,
                                    sizeof(chunked_request_with_error_in_footers));
-    
+
     http::request http_request;
     boost::system::error_code ec;
-    
+
     // The HTTP Packet does not contain any footer value associated with the footer key
     // This will lead to any error within the parse_headers() method
     BOOST_CHECK_EQUAL(request_parser.parse(http_request, ec), false);
-    
+
     // Check if there is an error generated
     BOOST_CHECK_EQUAL(ec.value(), http::parser::ERROR_HEADER_CHAR);
 
     BOOST_CHECK_EQUAL(http_request.get_content_length(), 15UL);
     BOOST_CHECK_EQUAL(request_parser.get_total_bytes_read(), 84UL);
     BOOST_CHECK_EQUAL(http_request.get_header("Transfer-Encoding"), "chunked");
-    
+
     // Check if the footers are added as a part of the HTTP Data
     BOOST_CHECK_EQUAL(http_request.get_header("some-footer"), "some-value");
 }
@@ -638,15 +638,15 @@ BOOST_AUTO_TEST_CASE(testHTTP_0_9_RequestParser)
 {
     http::parser request_parser(true);
     std::string request_str = "GET /uri\r\n";
- 
+
     request_parser.set_read_buffer(request_str.c_str(), request_str.length());
-    
+
     http::request http_request;
     boost::system::error_code ec;
     BOOST_CHECK(request_parser.parse(http_request, ec));
 
     BOOST_CHECK(!ec);
-    
+
     BOOST_CHECK(http_request.is_valid()); // this should be a valid request
     BOOST_CHECK(http_request.get_version_major() == 0); // we don't set the actual 0.9 version, but the major version should be 0
 }
@@ -655,9 +655,9 @@ BOOST_AUTO_TEST_CASE(testHTTP_0_9_ResponseParser)
 {
     http::parser request_parser(true);
     std::string request_str = "GET /uri\r\n";
-    
+
     request_parser.set_read_buffer(request_str.c_str(), request_str.length());
-    
+
     http::request http_request;
     boost::system::error_code ec;
     BOOST_CHECK(request_parser.parse(http_request, ec));
@@ -665,29 +665,29 @@ BOOST_AUTO_TEST_CASE(testHTTP_0_9_ResponseParser)
 
     http::parser response_parser(false);
     std::string response_str = "Response Body";
-    
+
     http::response http_response;
-    
+
     // HTTP 0.9 logic only applies if HTTP 0.9 request is detected
     http_response.update_request_info(http_request);
 
     // this logic is currently implemented by HTTPProtocol and required for proper handling of v0.9 request
     response_parser.skip_header_parsing(http_response);
-    
+
     response_parser.set_read_buffer(response_str.c_str(), response_str.length());
-    
+
     ec.clear();
-    
+
     boost::tribool rc = response_parser.parse(http_response, ec);
     BOOST_CHECK(boost::indeterminate(rc));
     BOOST_CHECK(!ec);
-    
+
     // HTTP 0.9 response has no length specified; simulating server closing the connection to finalize it
     response_parser.finish(http_response);
     BOOST_CHECK(http_response.is_valid()); // must be a valid response
     BOOST_CHECK(http_response.get_version_major() == 0);
     BOOST_CHECK(response_str.compare(http_response.get_content()) == 0);
-    
+
 }
 
 
@@ -695,8 +695,8 @@ BOOST_AUTO_TEST_CASE(testHTTP_0_9_ResponseParser)
 class HTTPParserForwardedForTests_F
 {
 public:
-    HTTPParserForwardedForTests_F(void) {}
-    ~HTTPParserForwardedForTests_F(void) {}
+    HTTPParserForwardedForTests_F() = default;
+    ~HTTPParserForwardedForTests_F() = default;
 
     inline void checkParsingTrue(const std::string& header, const std::string& result) {
         std::string public_ip;

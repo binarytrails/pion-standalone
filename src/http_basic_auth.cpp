@@ -15,8 +15,8 @@
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
-    
-    
+
+
 // static members of basic_auth
 
 const unsigned int  basic_auth::CACHE_EXPIRATION = 300;  // 5 minutes
@@ -26,41 +26,41 @@ const unsigned int  basic_auth::CACHE_EXPIRATION = 300;  // 5 minutes
 
 basic_auth::basic_auth(user_manager_ptr userManager, const std::string& realm)
     : http::auth(userManager), m_realm(realm),
-    m_cache_cleanup_time(pion::chrono::system_clock::now())
+    m_cache_cleanup_time(std::chrono::system_clock::now())
 {
     set_logger(PION_GET_LOGGER("pion.http.basic_auth"));
 }
-    
+
 bool basic_auth::handle_request(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn)
 {
     if (!need_authentication(http_request_ptr)) {
         return true; // this request does not require authentication
     }
-    
-    pion::chrono::system_clock::time_point time_now(pion::chrono::system_clock::now());
-    if (time_now > m_cache_cleanup_time + pion::chrono::seconds(CACHE_EXPIRATION)) {
+
+    std::chrono::system_clock::time_point time_now(std::chrono::system_clock::now());
+    if (time_now > m_cache_cleanup_time + std::chrono::seconds(CACHE_EXPIRATION)) {
         // expire cache
-        pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
+        std::unique_lock<std::mutex> cache_lock(m_cache_mutex);
         user_cache_type::iterator i;
         user_cache_type::iterator next=m_user_cache.begin();
         while (next!=m_user_cache.end()) {
             i=next;
             ++next;
-            if (time_now > i->second.first + pion::chrono::seconds(CACHE_EXPIRATION)) {
+            if (time_now > i->second.first + std::chrono::seconds(CACHE_EXPIRATION)) {
                 // ok - this is an old record.. expire it now
                 m_user_cache.erase(i);
             }
         }
         m_cache_cleanup_time = time_now;
     }
-    
+
     // if we are here, we need to check if access authorized...
     std::string authorization = http_request_ptr->get_header(http::types::HEADER_AUTHORIZATION);
     if (!authorization.empty()) {
         std::string credentials;
         if (parse_authorization(authorization, credentials)) {
             // to do - use fast cache to match with active credentials
-            pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
+            std::unique_lock<std::mutex> cache_lock(m_cache_mutex);
             user_cache_type::iterator user_cache_ptr=m_user_cache.find(credentials);
             if (user_cache_ptr!=m_user_cache.end()) {
                 // we found the credentials in our cache...
@@ -69,10 +69,10 @@ bool basic_auth::handle_request(const http::request_ptr& http_request_ptr, const
                 user_cache_ptr->second.first = time_now;
                 return true;
             }
-    
+
             std::string username;
             std::string password;
-    
+
             if (parse_credentials(credentials, username, password)) {
                 // match username/password
                 user_ptr user=m_user_manager->get_user(username, password);
@@ -91,30 +91,30 @@ bool basic_auth::handle_request(const http::request_ptr& http_request_ptr, const
     handle_unauthorized(http_request_ptr, tcp_conn);
     return false;
 }
-    
-void basic_auth::set_option(const std::string& name, const std::string& value) 
+
+void basic_auth::set_option(const std::string& name, const std::string& value)
 {
     if (name=="realm")
         m_realm = value;
     else
         PION_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
 }
-    
+
 bool basic_auth::parse_authorization(const std::string& authorization, std::string &credentials)
 {
-	if ( authorization.find( "Basic " ) != 0 )
+    if ( authorization.find( "Basic " ) != 0 ) // start with "Basic "
         return false;
     credentials = authorization.substr(6);
     if (credentials.empty())
         return false;
     return true;
 }
-    
+
 bool basic_auth::parse_credentials(const std::string &credentials,
     std::string &username, std::string &password)
 {
     std::string user_password;
-    
+
     if (! algorithm::base64_decode(credentials, user_password))
         return false;
 
@@ -122,13 +122,13 @@ bool basic_auth::parse_credentials(const std::string &credentials,
     std::string::size_type i = user_password.find(':');
     if (i==0 || i==std::string::npos)
         return false;
-    
+
     username = user_password.substr(0, i);
     password = user_password.substr(i+1);
-    
+
     return true;
 }
-    
+
 void basic_auth::handle_unauthorized(const http::request_ptr& http_request_ptr,
     const tcp::connection_ptr& tcp_conn)
 {
@@ -144,13 +144,13 @@ void basic_auth::handle_unauthorized(const http::request_ptr& http_request_ptr,
         "<BODY><H1>401 Unauthorized.</H1></BODY>"
         "</HTML> ";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                                   pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                                   std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_UNAUTHORIZED);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_UNAUTHORIZED);
     writer->get_response().add_header("WWW-Authenticate", "Basic realm=\"" + m_realm + "\"");
     writer->write_no_copy(CONTENT);
     writer->send();
 }
-    
+
 }   // end namespace http
 }   // end namespace pion

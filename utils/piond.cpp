@@ -9,7 +9,7 @@
 
 #include <vector>
 #include <iostream>
-#include <pion/utils/pion_asio.hpp>
+#include <asio.hpp>
 #include <pion/error.hpp>
 #include <pion/plugin.hpp>
 #include <pion/process.hpp>
@@ -28,7 +28,7 @@ using namespace pion;
 
 
 /// displays an error message if the arguments are invalid
-void argument_error(void)
+void argument_error()
 {
     std::cerr << "usage:   piond [OPTIONS] RESOURCE WEBSERVICE" << std::endl
               << "         piond [OPTIONS] -c SERVICE_CONFIG_FILE" << std::endl
@@ -44,16 +44,16 @@ int main (int argc, char *argv[])
     // used to keep track of web service name=value options
     typedef std::vector<std::pair<std::string, std::string> >   ServiceOptionsType;
     ServiceOptionsType service_options;
-    
+
     // parse command line: determine port number, RESOURCE and WEBSERVICE
-    pion::asio::ip::tcp::endpoint cfg_endpoint(pion::asio::ip::tcp::v4(), DEFAULT_PORT);
+    asio::ip::tcp::endpoint cfg_endpoint(asio::ip::tcp::v4(), DEFAULT_PORT);
     std::string service_config_file;
     std::string resource_name;
     std::string service_name;
     std::string ssl_pem_file;
     bool ssl_flag = false;
     bool verbose_flag = false;
-    
+
     for (int argnum=1; argnum < argc; ++argnum) {
         if (argv[argnum][0] == '-') {
             if (argv[argnum][1] == 'p' && argv[argnum][2] == '\0' && argnum+1 < argc) {
@@ -63,7 +63,7 @@ int main (int argc, char *argv[])
                 if (cfg_endpoint.port() == 0) cfg_endpoint.port(DEFAULT_PORT);
             } else if (argv[argnum][1] == 'i' && argv[argnum][2] == '\0' && argnum+1 < argc) {
                 // set ip address
-                cfg_endpoint.address(pion::asio::ip::address::from_string(argv[++argnum]));
+                cfg_endpoint.address(asio::ip::address::from_string(argv[++argnum]));
             } else if (argv[argnum][1] == 'c' && argv[argnum][2] == '\0' && argnum+1 < argc) {
                 service_config_file = argv[++argnum];
             } else if (argv[argnum][1] == 'd' && argv[argnum][2] == '\0' && argnum+1 < argc) {
@@ -105,15 +105,15 @@ int main (int argc, char *argv[])
             return 1;
         }
     }
-    
+
     if (service_config_file.empty() && (resource_name.empty() || service_name.empty())) {
         argument_error();
         return 1;
     }
-    
+
     // initialize signal handlers, etc.
     process::initialize();
-    
+
     // initialize log system (use simple configuration)
     logger main_log(PION_GET_LOGGER("piond"));
     logger pion_log(PION_GET_LOGGER("pion"));
@@ -125,7 +125,7 @@ int main (int argc, char *argv[])
         PION_LOG_SETLEVEL_INFO(pion_log);
     }
     PION_LOG_CONFIG_BASIC;
-    
+
     try {
         // add the Pion plug-ins installation directory to our path
         try { plugin::add_plugin_directory(PION_PLUGINS_DIRECTORY); }
@@ -153,7 +153,7 @@ int main (int argc, char *argv[])
             PION_LOG_ERROR(main_log, "SSL support is not enabled");
 #endif
         }
-        
+
         if (service_config_file.empty()) {
             // load a single web service using the command line arguments
             web_server.load_service(resource_name, service_name);
@@ -172,7 +172,7 @@ int main (int argc, char *argv[])
         // startup the server
         web_server.start();
         process::wait_for_shutdown();
-        
+
     } catch (std::exception& e) {
         PION_LOG_FATAL(main_log, pion::diagnostic_information(e));
     }

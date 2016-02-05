@@ -12,9 +12,9 @@
 
 #include <pion/config.hpp>
 #include <string>
-#include <pion/utils/pion_memory.hpp>
-#include <pion/utils/pion_mutex.hpp>
-#include <pion/utils/pion_condition_variable.hpp>
+#include <memory>
+#include <mutex>
+#include <condition_variable>
 
 // Dump file generation support on Windows
 #ifdef PION_WIN32
@@ -33,28 +33,28 @@ namespace pion {    // begin namespace pion
 ///
 /// process: class for managing process/service related functions
 ///
-class PION_API process :
-    private pion::noncopyable
+class PION_API process
 {
 public:
+	process( const process & ) = delete;
 
     // default destructor
-    ~process() {}
-    
+    ~process() = default;
+
     /// default constructor
-    process(void) {}
-    
+    process() = default;
+
     /// signals the shutdown condition
-    static void shutdown(void);
-    
+    static void shutdown();
+
     /// blocks until the shutdown condition has been signaled
-    static void wait_for_shutdown(void);
+    static void wait_for_shutdown();
 
     /// sets up basic signal handling for the process
-    static void initialize(void);
-    
+    static void initialize();
+
     /// fork process and run as a background daemon
-    static void daemonize(void);
+    static void daemonize();
 
 #ifdef PION_WIN32
 
@@ -71,8 +71,8 @@ public:
     /**
      * enables mini-dump generation on unhandled exceptions (AVs, etc.)
      * throws an dumpfile_init_exception if unable to set the unhandled exception processing
-     * @param dir file system path to store mini dumps  
-     */ 
+     * @param dir file system path to store mini dumps
+     */
     static void set_dumpfile_directory(const std::string& dir);
 
 protected:
@@ -89,25 +89,25 @@ protected:
     struct config_type {
         /// constructor just initializes native types
 #ifdef PION_WIN32
-        config_type() : shutdown_now(false), h_dbghelp(NULL), p_dump_proc(NULL) {}
+        config_type() : shutdown_now(false), h_dbghelp(nullptr), p_dump_proc(nullptr) {}
 #else
         config_type() : shutdown_now(false) {}
 #endif
-    
+
         /// true if we should shutdown now
         bool                    shutdown_now;
-        
+
         /// triggered when it is time to shutdown
-        pion::condition_variable        shutdown_cond;
+        std::condition_variable        shutdown_cond;
 
         /// used to protect the shutdown condition
-        pion::mutex            shutdown_mutex;
+        std::mutex            shutdown_mutex;
 
 // Dump file generation support on Windows
 #ifdef PION_WIN32
         /// mini-dump file location
         std::string             dumpfile_dir;
-        
+
         /// dbghelp.dll library handle
         HMODULE                 h_dbghelp;
 
@@ -117,8 +117,8 @@ protected:
     };
 
     /// returns a singleton instance of config_type
-    static inline config_type& get_config(void) {
-        pion::call_once(m_instance_flag, process::create_config);
+    static inline config_type& get_config() {
+        std::call_once(m_instance_flag, process::create_config);
         return *m_config_ptr;
     }
 
@@ -126,11 +126,11 @@ protected:
 private:
 
     /// creates the config_type singleton
-    static void create_config(void);
+    static void create_config();
 
-    
+
     /// used to ensure thread safety of the config_type singleton
-    static pion::once_flag             m_instance_flag;
+    static std::once_flag             m_instance_flag;
 
     /// pointer to the config_type singleton
     static config_type *          m_config_ptr;

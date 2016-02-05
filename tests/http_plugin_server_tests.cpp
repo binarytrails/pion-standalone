@@ -55,7 +55,7 @@ PION_DECLARE_PLUGIN(CookieService)
 
 
 /// generates chunked POST requests for testing purposes
-class ChunkedPostRequestSender : 
+class ChunkedPostRequestSender :
     public boost::enable_shared_from_this<ChunkedPostRequestSender>,
     private boost::noncopyable
 {
@@ -71,14 +71,14 @@ public:
     {
         return boost::shared_ptr<ChunkedPostRequestSender>(new ChunkedPostRequestSender(tcp_conn, resource));
     }
-    
+
     ~ChunkedPostRequestSender() {
         for (m_chunk_iterator = m_chunks.begin(); m_chunk_iterator != m_chunks.end(); ++m_chunk_iterator) {
             delete[] m_chunk_iterator->second;
         }
     }
-    
-    void send(void);
+
+    void send();
 
     void addChunk(size_t size, const char* ptr) {
         char* localCopy = new char[size];
@@ -91,7 +91,7 @@ protected:
 
     ChunkedPostRequestSender(const pion::tcp::connection_ptr& tcp_conn,
                              const std::string& resource);
-    
+
     /**
      * handler called after a send operation has completed
      *
@@ -110,7 +110,7 @@ private:
 
     /// the chunks we are sending
     std::vector<Chunk>                      m_chunks;
-    
+
     std::vector<Chunk>::const_iterator      m_chunk_iterator;
 
     /// the HTTP request writer we are using
@@ -128,29 +128,29 @@ ChunkedPostRequestSender::ChunkedPostRequestSender(const pion::tcp::connection_p
     m_chunk_iterator = m_chunks.begin();
 }
 
-void ChunkedPostRequestSender::send(void)
+void ChunkedPostRequestSender::send()
 {
     if (m_chunk_iterator == m_chunks.end()) {
         m_writer->send_final_chunk(boost::bind(&ChunkedPostRequestSender::handle_write,
                                              shared_from_this(),
-                                             boost::asio::placeholders::error,
-                                             boost::asio::placeholders::bytes_transferred));
+                                             boost::std::placeholders::_1,
+                                             boost::std::placeholders::_2));
         return;
     }
 
     // write the current chunk
     m_writer->write_no_copy(m_chunk_iterator->second, m_chunk_iterator->first);
-    
+
     if (++m_chunk_iterator == m_chunks.end()) {
         m_writer->send_final_chunk(boost::bind(&ChunkedPostRequestSender::handle_write,
                                              shared_from_this(),
-                                             boost::asio::placeholders::error,
-                                             boost::asio::placeholders::bytes_transferred));
+                                             boost::std::placeholders::_1,
+                                             boost::std::placeholders::_2));
     } else {
         m_writer->send_chunk(boost::bind(&ChunkedPostRequestSender::handle_write,
                                         shared_from_this(),
-                                        boost::asio::placeholders::error,
-                                        boost::asio::placeholders::bytes_transferred));
+                                        boost::std::placeholders::_1,
+                                        boost::std::placeholders::_2));
     }
 }
 
@@ -165,7 +165,7 @@ void ChunkedPostRequestSender::handle_write(const boost::system::error_code& wri
         PION_LOG_ERROR(m_logger, "Error sending chunked request (" << write_error.message() << ')');
     } else {
         // request data sent OK
-        
+
         if (m_chunk_iterator == m_chunks.end()) {
             PION_LOG_DEBUG(m_logger, "Sent " << bytes_written << " bytes (finished)");
         } else {
@@ -186,10 +186,10 @@ static const std::string SHA_256_HASH_OF_PASSWORD_2 = "b620fa9f74d0173f84c8f2711
 
 ///
 /// WebServerTests_F: fixture used for running web server tests
-/// 
+///
 class WebServerTests_F {
 public:
-    
+
     // default constructor & destructor
     WebServerTests_F() : m_scheduler(), m_server(m_scheduler) {
         // initialize the list of directories in which to look for plug-ins
@@ -202,7 +202,7 @@ public:
         m_server.stop();
         m_scheduler.shutdown();
     }
-    
+
     /**
      * sends a request to the local HTTP server
      *
@@ -222,7 +222,7 @@ public:
         // send HTTP request to the server
         http_stream << "GET " << resource << " HTTP/1.1" << http::types::STRING_CRLF << http::types::STRING_CRLF;
         http_stream.flush();
-                
+
         // receive response from the server
         std::string rsp_line;
         boost::smatch rx_matches;
@@ -234,7 +234,7 @@ public:
         // extract response status code
         response_code = boost::lexical_cast<unsigned int>(rx_matches[1]);
         BOOST_REQUIRE(response_code != 0);
-        
+
         // read response headers
         content_length = 0;
         while (true) {
@@ -250,22 +250,22 @@ public:
                     content_length = boost::lexical_cast<unsigned long>(rx_matches[1]);
             }
         }
-        
+
         return response_code;
     }
-    
+
     /**
      * checks the local HTTP server's response code & validity using HelloService
      */
-    inline void checkWebServerResponseCode(void) {
+    inline void checkWebServerResponseCode() {
         // load simple Hello service and start the server
         m_server.load_service("/hello", "HelloService");
         m_server.start();
-        
+
         // open a connection
         boost::asio::ip::tcp::endpoint http_endpoint(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
         boost::asio::ip::tcp::iostream http_stream(http_endpoint);
-        
+
         // send valid request to the server
         unsigned int response_code;
         unsigned long content_length = 0;
@@ -276,12 +276,12 @@ public:
             boost::scoped_array<char> content_buf(new char[content_length+1]);
             BOOST_CHECK(http_stream.read(content_buf.get(), content_length));
         }
-        
+
         // send invalid request to the server
         response_code = sendRequest(http_stream, "/doesnotexist", content_length);
         BOOST_CHECK(response_code == 404);
     }
-    
+
     /**
      * checks response content validity for the local HTTP server
      *
@@ -300,12 +300,12 @@ public:
         response_code = sendRequest(http_stream, resource, content_length);
         BOOST_CHECK(response_code == expectedResponseCode);
         BOOST_REQUIRE(content_length > 0);
-        
+
         // read in the response content
         boost::scoped_array<char> content_buf(new char[content_length+1]);
         BOOST_CHECK(http_stream.read(content_buf.get(), content_length));
         content_buf[content_length] = '\0';
-        
+
         // check the response content
         BOOST_CHECK(boost::regex_match(content_buf.get(), content_regex));
     }
@@ -325,7 +325,7 @@ public:
         // load specified service and start the server
         m_server.load_service(resource, service);
         m_server.start();
-        
+
         // open a connection
         boost::asio::ip::tcp::endpoint http_endpoint(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
         boost::asio::ip::tcp::iostream http_stream(http_endpoint);
@@ -333,10 +333,10 @@ public:
         // send request and check response
         checkWebServerResponseContent(http_stream, resource, content_regex, expectedResponseCode);
     }
-    
+
     /**
      * checks if we can successfully send and receive HTTP messages
-     * 
+     *
      * @param tcp_conn open TCP connection to use for the tests
      */
     inline void checkSendAndReceiveMessages(pion::tcp::connection& tcp_conn) {
@@ -350,13 +350,13 @@ public:
         http::response http_response(http_request);
         http_response.receive(tcp_conn, error_code);
         BOOST_REQUIRE(! error_code);
-        
+
         // check that the response is OK
         boost::regex hello_regex(".*Hello\\sWorld.*");
         BOOST_REQUIRE(http_response.get_status_code() == 200);
         BOOST_REQUIRE(http_response.get_content_length() > 0);
         BOOST_REQUIRE(boost::regex_match(http_response.get_content(), hello_regex));
-                
+
         // send invalid request to the server
         http_request.set_resource("/doesnotexist");
         http_request.send(tcp_conn, error_code);
@@ -365,9 +365,9 @@ public:
         BOOST_REQUIRE(! error_code);
         BOOST_CHECK_EQUAL(http_response.get_status_code(), 404U);
     }
-    
-    inline boost::asio::io_service& get_io_service(void) { return m_scheduler.get_io_service(); }
-    
+
+    inline boost::asio::io_service& get_io_service() { return m_scheduler.get_io_service(); }
+
     single_service_scheduler	m_scheduler;
 	http::plugin_server			m_server;
 };
@@ -393,14 +393,14 @@ BOOST_AUTO_TEST_CASE(checkSendRequestsAndReceiveResponses) {
     // load simple Hello service and start the server
     m_server.load_service("/hello", "HelloService");
     m_server.start();
-    
+
     // open a connection
     pion::tcp::connection tcp_conn(get_io_service());
     tcp_conn.set_lifecycle(pion::tcp::connection::LIFECYCLE_KEEPALIVE);
     boost::system::error_code error_code;
     error_code = tcp_conn.connect(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
     BOOST_REQUIRE(! error_code);
-    
+
     checkSendAndReceiveMessages(tcp_conn);
 }
 
@@ -408,31 +408,31 @@ BOOST_AUTO_TEST_CASE(checkSendRequestsAndReceiveResponseLeftoverConnection) {
     // load simple Hello service and start the server
     m_server.load_service("/hello", "HelloService");
     m_server.start();
-    
+
     // open a connection
     pion::tcp::connection tcp_conn(get_io_service());
     tcp_conn.set_lifecycle(pion::tcp::connection::LIFECYCLE_KEEPALIVE);
     boost::system::error_code error_code;
     error_code = tcp_conn.connect(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
     BOOST_REQUIRE(! error_code);
-    
+
     // send valid request to the server
     http::request http_request("/hello");
     http_request.send(tcp_conn, error_code);
     BOOST_REQUIRE(! error_code);
-    
+
     // receive the response from the server
     http::response http_response(http_request);
     http_response.receive(tcp_conn, error_code);
     BOOST_REQUIRE(! error_code);
     BOOST_CHECK_EQUAL(http_response.get_header(http::types::HEADER_CONNECTION), "Keep-Alive");
-    
+
     // check that the response is OK
     boost::regex hello_regex(".*Hello\\sWorld.*");
     BOOST_REQUIRE(http_response.get_status_code() == 200);
     BOOST_REQUIRE(http_response.get_content_length() > 0);
     BOOST_REQUIRE(boost::regex_match(http_response.get_content(), hello_regex));
-    
+
     // shut down the server while the connection is still alive and waiting for data
     m_server.stop();
 }
@@ -657,7 +657,7 @@ BOOST_AUTO_TEST_CASE(checkSendRequestsAndReceiveResponseLeftoverConnectionUsingS
     m_server.set_ssl_key_file(SSL_PEM_FILE);
     m_server.load_service("/hello", "HelloService");
     m_server.start();
-    
+
     // open a connection
     pion::tcp::connection tcp_conn(get_io_service(), true);
     tcp_conn.set_lifecycle(pion::tcp::connection::LIFECYCLE_KEEPALIVE);
@@ -666,24 +666,24 @@ BOOST_AUTO_TEST_CASE(checkSendRequestsAndReceiveResponseLeftoverConnectionUsingS
     BOOST_REQUIRE(! error_code);
     error_code = tcp_conn.handshake_client();
     BOOST_REQUIRE(! error_code);
-    
+
     // send valid request to the server
     http::request http_request("/hello");
     http_request.send(tcp_conn, error_code);
     BOOST_REQUIRE(! error_code);
-    
+
     // receive the response from the server
     http::response http_response(http_request);
     http_response.receive(tcp_conn, error_code);
     BOOST_REQUIRE(! error_code);
     BOOST_CHECK_EQUAL(http_response.get_header(http::types::HEADER_CONNECTION), "Keep-Alive");
-    
+
     // check that the response is OK
     boost::regex hello_regex(".*Hello\\sWorld.*");
     BOOST_REQUIRE(http_response.get_status_code() == 200);
     BOOST_REQUIRE(http_response.get_content_length() > 0);
     BOOST_REQUIRE(boost::regex_match(http_response.get_content(), hello_regex));
-    
+
     // shut down the server while the connection is still alive and waiting for data
     m_server.stop();
 }
@@ -785,11 +785,11 @@ BOOST_AUTO_TEST_CASE(checkFileServiceResponseContent) {
         m_server.load_service_config(SERVICES_CONFIG_FILE);
     } catch (error::directory_not_found&) {}
     m_server.start();
-    
+
     // open a connection
     boost::asio::ip::tcp::endpoint http_endpoint(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
     boost::asio::ip::tcp::iostream http_stream(http_endpoint);
-    
+
     // send request and check response (index page)
     const boost::regex index_page_regex(".*<html>.*Test\\sWebsite.*</html>.*");
     checkWebServerResponseContent(http_stream, "/" , index_page_regex);
@@ -810,7 +810,7 @@ BOOST_AUTO_TEST_CASE(checkPionUserPasswordSanity) {
     std::string encrypted_pw = u.get_password();
     BOOST_CHECK_EQUAL(encrypted_pw.size(), static_cast<unsigned int>(SHA256_DIGEST_LENGTH * 2));
     BOOST_CHECK(clear_pw != encrypted_pw);
-    
+
     u.set_password_hash(encrypted_pw);
     BOOST_CHECK_EQUAL(encrypted_pw, u.get_password());   // should still be identical
     BOOST_CHECK(u.match_password(clear_pw));
@@ -881,30 +881,30 @@ BOOST_AUTO_TEST_CASE(checkBasicAuthServiceFailure) {
     my_auth_ptr->add_restrict("/auth");
     my_auth_ptr->add_user("mike", "123456");
     m_server.start();
-    
+
     // open a connection
     tcp::connection_ptr tcp_conn(new pion::tcp::connection(get_io_service()));
     tcp_conn->set_lifecycle(pion::tcp::connection::LIFECYCLE_KEEPALIVE);
     boost::system::error_code error_code;
     error_code = tcp_conn->connect(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
     BOOST_REQUIRE(!error_code);
-    
+
     pion::http::request_writer_ptr writer(pion::http::request_writer::create(tcp_conn));
     writer->get_request().set_method("POST");
     writer->get_request().set_resource("/auth/something/somewhere");
-    
+
     writer << "junk";
     writer->send();
-    
+
     // receive the response from the server
     http::response http_response(writer->get_request());
     http_response.receive(*tcp_conn, error_code);
     BOOST_CHECK(!error_code);
-    
+
     // check that the response is RESPONSE_CODE_UNAUTHORIZED
     BOOST_CHECK(http_response.get_status_code() == http::types::RESPONSE_CODE_UNAUTHORIZED);
     BOOST_CHECK(http_response.get_content_length() > 0);
-    
+
     // check the post content of the request, by parsing it out of the post content of the response
     boost::regex post_content(".*\\[POST Content]\\s*junk.*");
     BOOST_CHECK(!boost::regex_match(http_response.get_content(), post_content));
@@ -918,32 +918,32 @@ BOOST_AUTO_TEST_CASE(checkBasicAuthServiceLogin) {
     my_auth_ptr->add_restrict("/auth");
     my_auth_ptr->add_user("mike", "123456");
     m_server.start();
-    
+
     // open a connection
     tcp::connection_ptr tcp_conn(new pion::tcp::connection(get_io_service()));
     tcp_conn->set_lifecycle(pion::tcp::connection::LIFECYCLE_KEEPALIVE);
     boost::system::error_code error_code;
     error_code = tcp_conn->connect(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
     BOOST_REQUIRE(!error_code);
-    
+
     pion::http::request_writer_ptr writer(pion::http::request_writer::create(tcp_conn));
     writer->get_request().set_method("POST");
     writer->get_request().set_resource("/auth/something/somewhere");
     // add an authentication for "mike:123456"
     writer->get_request().add_header(http::types::HEADER_AUTHORIZATION, "Basic bWlrZToxMjM0NTY=");
-    
+
     writer << "junk";
     writer->send();
-    
+
     // receive the response from the server
     http::response http_response(writer->get_request());
     http_response.receive(*tcp_conn, error_code);
     BOOST_CHECK(!error_code);
-    
+
     // check that the response is OK
     BOOST_CHECK(http_response.get_status_code() == 200);
     BOOST_CHECK(http_response.get_content_length() > 0);
-    
+
     // check the post content of the request, by parsing it out of the post content of the response
     boost::regex post_content(".*\\[POST Content]\\s*junk.*");
     BOOST_CHECK(boost::regex_match(http_response.get_content(), post_content));
@@ -1053,11 +1053,11 @@ BOOST_AUTO_TEST_SUITE_END()
 #define BIG_BUF_SIZE (12 * 1024)
 
 ///
-/// ContentResponseWithoutLengthTests_F: 
+/// ContentResponseWithoutLengthTests_F:
 /// this uses a "big content buffer" to make sure that reading the response
 /// content works across multiple packets (and asio_read_some() calls)
 /// and when no content-length is specified (it should read through the end)
-/// 
+///
 class ContentResponseWithoutLengthTests_F
     : public WebServerTests_F
 {
@@ -1070,7 +1070,7 @@ public:
         }
     }
     virtual ~ContentResponseWithoutLengthTests_F() {}
-    
+
     /**
      * sends an HTTP response with content, but not content-length provided
      *
@@ -1082,24 +1082,24 @@ public:
     {
         // make sure it will get closed when finished
         tcp_conn->set_lifecycle(pion::tcp::connection::LIFECYCLE_CLOSE);
-        
+
         // prepare the response headers
         http::response http_response(*http_request_ptr);
         http_response.set_do_not_send_content_length();
-        
+
         // send the response headers
         boost::system::error_code error_code;
         http_response.send(*tcp_conn, error_code);
         BOOST_REQUIRE(! error_code);
-        
+
         // send the content buffer
         tcp_conn->write(boost::asio::buffer(m_big_buf, BIG_BUF_SIZE), error_code);
         BOOST_REQUIRE(! error_code);
-        
+
         // finish (and close) the connection
         tcp_conn->finish();
     }
-    
+
     /// reads in a HTTP response asynchronously
     void readAsyncResponse(const tcp::connection_ptr& tcp_conn)
     {
@@ -1118,7 +1118,7 @@ public:
         BOOST_REQUIRE(http_response.get_content_length() == BIG_BUF_SIZE);
         BOOST_CHECK_EQUAL(memcmp(http_response.get_content(), m_big_buf, BIG_BUF_SIZE), 0);
     }
-    
+
     /// checks the validity of the HTTP response
     void checkResponse(http::response_ptr& http_response_ptr,
         tcp::connection_ptr& /* conn_ptr */, const boost::system::error_code& /* ec */)
@@ -1130,7 +1130,7 @@ public:
 
     /// big data buffer used for the tests
     char                m_big_buf[BIG_BUF_SIZE];
-    
+
     /// signaled after the async response check has finished
     boost::condition    m_async_test_finished;
 
@@ -1144,11 +1144,11 @@ public:
 BOOST_FIXTURE_TEST_SUITE(ContentResponseWithoutLengthTests_S, ContentResponseWithoutLengthTests_F)
 
 BOOST_AUTO_TEST_CASE(checkSendContentWithoutLengthAndReceiveSyncResponse) {
-    // startup the server 
+    // startup the server
     m_server.add_resource("/big", boost::bind(&ContentResponseWithoutLengthTests_F::sendResponseWithContentButNoLength,
                                              this, _1, _2));
     m_server.start();
-    
+
     // open a connection
     tcp::connection_ptr tcp_conn(new pion::tcp::connection(get_io_service()));
     boost::system::error_code error_code;
@@ -1159,28 +1159,28 @@ BOOST_AUTO_TEST_CASE(checkSendContentWithoutLengthAndReceiveSyncResponse) {
     http::request http_request("/big");
     http_request.send(*tcp_conn, error_code);
     BOOST_REQUIRE(! error_code);
-    
+
     // receive the response from the server
     http::response http_response(http_request);
     http_response.receive(*tcp_conn, error_code);
     BOOST_REQUIRE(! error_code);
-    
+
     // check that the response is OK
     checkResponse(http_response);
 }
 
 BOOST_AUTO_TEST_CASE(checkSendContentWithoutLengthAndReceiveAsyncResponse) {
-    // startup the server 
+    // startup the server
     m_server.add_resource("/big", boost::bind(&ContentResponseWithoutLengthTests_F::sendResponseWithContentButNoLength,
                                              this, _1, _2));
     m_server.start();
-    
+
     // open a connection
     tcp::connection_ptr tcp_conn(new pion::tcp::connection(get_io_service()));
     boost::system::error_code error_code;
     error_code = tcp_conn->connect(boost::asio::ip::address::from_string("127.0.0.1"), m_server.get_port());
     BOOST_REQUIRE(!error_code);
-    
+
     // send an HTTP request
     boost::mutex::scoped_lock async_lock(m_mutex);
     pion::http::request_writer_ptr writer_ptr(pion::http::request_writer::create(tcp_conn,
@@ -1188,7 +1188,7 @@ BOOST_AUTO_TEST_CASE(checkSendContentWithoutLengthAndReceiveAsyncResponse) {
                                                  this, tcp_conn)));
     writer_ptr->get_request().set_resource("/big");
     writer_ptr->send();
-    
+
     // wait until the test is finished (and async calls have finished)
     m_async_test_finished.wait(async_lock);
 }

@@ -13,10 +13,10 @@
 #include <pion/config.hpp>
 #include <map>
 #include <string>
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_memory.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <asio.hpp>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <pion/tcp/server.hpp>
 #include <pion/tcp/connection.hpp>
 #include <pion/http/request.hpp>
@@ -38,10 +38,10 @@ class PION_API server :
 public:
 
     /// type of function that is used to handle requests
-    typedef pion::function<void (const http::request_ptr&, const tcp::connection_ptr&)>  request_handler_t;
+    typedef std::function<void (const http::request_ptr&, const tcp::connection_ptr&)>  request_handler_t;
 
     /// handler for requests that result in "500 Server Error"
-    typedef pion::function<void (const http::request_ptr&, const tcp::connection_ptr&,
+    typedef std::function<void (const http::request_ptr&, const tcp::connection_ptr&,
         const std::string&)> error_handler_t;
 
 
@@ -50,7 +50,7 @@ public:
 
     /**
      * creates a new server object
-     * 
+     *
      * @param tcp_port port number used to listen for new connections (IPv4)
      */
     explicit server(const unsigned int tcp_port = 0)
@@ -59,28 +59,28 @@ public:
         m_not_found_handler(server::handle_not_found_request),
         m_server_error_handler(server::handle_server_error),
         m_max_content_length(http::parser::DEFAULT_CONTENT_MAX)
-    { 
+    {
         set_logger(PION_GET_LOGGER("pion.http.server"));
     }
 
     /**
      * creates a new server object
-     * 
+     *
      * @param endpoint TCP endpoint used to listen for new connections (see ASIO docs)
      */
-    explicit server(const pion::asio::ip::tcp::endpoint& endpoint)
+    explicit server(const asio::ip::tcp::endpoint& endpoint)
         : tcp::server(endpoint),
         m_bad_request_handler(server::handle_bad_request),
         m_not_found_handler(server::handle_not_found_request),
         m_server_error_handler(server::handle_server_error),
         m_max_content_length(http::parser::DEFAULT_CONTENT_MAX)
-    { 
+    {
         set_logger(PION_GET_LOGGER("pion.http.server"));
     }
 
     /**
      * creates a new server object
-     * 
+     *
      * @param sched the scheduler that will be used to manage worker threads
      * @param tcp_port port number used to listen for new connections (IPv4)
      */
@@ -90,23 +90,23 @@ public:
         m_not_found_handler(server::handle_not_found_request),
         m_server_error_handler(server::handle_server_error),
         m_max_content_length(http::parser::DEFAULT_CONTENT_MAX)
-    { 
+    {
         set_logger(PION_GET_LOGGER("pion.http.server"));
     }
 
     /**
      * creates a new server object
-     * 
+     *
      * @param sched the scheduler that will be used to manage worker threads
      * @param endpoint TCP endpoint used to listen for new connections (see ASIO docs)
      */
-    server(scheduler& sched, const pion::asio::ip::tcp::endpoint& endpoint)
+    server(scheduler& sched, const asio::ip::tcp::endpoint& endpoint)
         : tcp::server(sched, endpoint),
         m_bad_request_handler(server::handle_bad_request),
         m_not_found_handler(server::handle_not_found_request),
         m_server_error_handler(server::handle_server_error),
         m_max_content_length(http::parser::DEFAULT_CONTENT_MAX)
-    { 
+    {
         set_logger(PION_GET_LOGGER("pion.http.server"));
     }
 
@@ -143,9 +143,9 @@ public:
     inline void set_error_handler(error_handler_t h) { m_server_error_handler = h; }
 
     /// clears the collection of resources recognized by the HTTP server
-    virtual void clear(void) {
+    virtual void clear() {
         if (is_listening()) stop();
-        pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+        std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
         m_resources.clear();
     }
 
@@ -215,7 +215,7 @@ public:
 
     /**
      * sets the handler object for authentication verification processing
-     */ 
+     */
     inline void set_authentication(http::auth_ptr auth) { m_auth_ptr = auth; }
 
     /// sets the maximum length for HTTP request payload content
@@ -225,7 +225,7 @@ protected:
 
     /**
      * handles a new TCP connection
-     * 
+     *
      * @param tcp_conn the new TCP connection to handle
      */
     virtual void handle_connection(const tcp::connection_ptr& tcp_conn);
@@ -238,7 +238,7 @@ protected:
      * @param ec error_code contains additional information for parsing errors
      */
     virtual void handle_request(const http::request_ptr& http_request_ptr,
-                                const tcp::connection_ptr& tcp_conn, const pion::error_code& ec);
+                                const tcp::connection_ptr& tcp_conn, const std::error_code& ec);
 
     /**
      * searches for the appropriate request handler to use for a given resource
@@ -278,7 +278,7 @@ private:
     error_handler_t             m_server_error_handler;
 
     /// mutex used to protect access to the resources
-    mutable pion::mutex        m_resource_mutex;
+    mutable std::mutex        m_resource_mutex;
 
     /// pointer to authentication handler object
     http::auth_ptr              m_auth_ptr;
@@ -289,7 +289,7 @@ private:
 
 
 /// data type for a HTTP server pointer
-typedef pion::shared_ptr<server>	server_ptr;
+typedef std::shared_ptr<server>	server_ptr;
 
 
 }   // end namespace http

@@ -9,14 +9,14 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <pion/utils/pion_regex.hpp>
-#include <pion/utils/pion_assert.hpp>
+#include <regex>
 #include <pion/utils/pion_tribool.hpp>
 #include <pion/algorithm.hpp>
 #include <pion/http/parser.hpp>
 #include <pion/http/request.hpp>
 #include <pion/http/response.hpp>
 #include <pion/http/message.hpp>
+#include <cassert>
 
 
 namespace pion {    // begin namespace pion
@@ -25,27 +25,27 @@ namespace http {    // begin namespace http
 
 // static members of parser
 
-const pion::uint32_t   parser::STATUS_MESSAGE_MAX = 1024;  // 1 KB
-const pion::uint32_t   parser::METHOD_MAX = 1024;  // 1 KB
-const pion::uint32_t   parser::RESOURCE_MAX = 256 * 1024;  // 256 KB
-const pion::uint32_t   parser::QUERY_STRING_MAX = 1024 * 1024; // 1 MB
-const pion::uint32_t   parser::HEADER_NAME_MAX = 1024; // 1 KB
-const pion::uint32_t   parser::HEADER_VALUE_MAX = 1024 * 1024; // 1 MB
-const pion::uint32_t   parser::QUERY_NAME_MAX = 1024;  // 1 KB
-const pion::uint32_t   parser::QUERY_VALUE_MAX = 1024 * 1024;  // 1 MB
-const pion::uint32_t   parser::COOKIE_NAME_MAX = 1024; // 1 KB
-const pion::uint32_t   parser::COOKIE_VALUE_MAX = 1024 * 1024; // 1 MB
+const uint32_t   parser::STATUS_MESSAGE_MAX = 1024;  // 1 KB
+const uint32_t   parser::METHOD_MAX = 1024;  // 1 KB
+const uint32_t   parser::RESOURCE_MAX = 256 * 1024;  // 256 KB
+const uint32_t   parser::QUERY_STRING_MAX = 1024 * 1024; // 1 MB
+const uint32_t   parser::HEADER_NAME_MAX = 1024; // 1 KB
+const uint32_t   parser::HEADER_VALUE_MAX = 1024 * 1024; // 1 MB
+const uint32_t   parser::QUERY_NAME_MAX = 1024;  // 1 KB
+const uint32_t   parser::QUERY_VALUE_MAX = 1024 * 1024;  // 1 MB
+const uint32_t   parser::COOKIE_NAME_MAX = 1024; // 1 KB
+const uint32_t   parser::COOKIE_VALUE_MAX = 1024 * 1024; // 1 MB
 const std::size_t       parser::DEFAULT_CONTENT_MAX = 1024 * 1024;  // 1 MB
-parser::error_category_t * parser::m_error_category_ptr = NULL;
-pion::once_flag            parser::m_instance_flag = PION_ONCE_INIT;
+parser::error_category_t * parser::m_error_category_ptr = nullptr;
+std::once_flag            parser::m_instance_flag;
 
 
 // parser member functions
 
 pion::tribool parser::parse(http::message& http_msg,
-    pion::error_code& ec)
+    std::error_code& ec)
 {
-    PION_ASSERT(! eof() );
+    assert(! eof() );
 
     pion::tribool rc = pion::indeterminate;
     std::size_t total_bytes_parsed = 0;
@@ -81,7 +81,7 @@ pion::tribool parser::parse(http::message& http_msg,
                 // check if we have finished parsing all chunks
                 if (rc == true && !m_payload_handler) {
                     http_msg.concatenate_chunks();
-                    
+
                     // Handle footers if present
                     rc = ((m_message_parse_state == PARSE_FOOTERS) ?
                           pion::indeterminate : (pion::tribool)true);
@@ -122,7 +122,7 @@ pion::tribool parser::parse(http::message& http_msg,
 }
 
 pion::tribool parser::parse_missing_data(http::message& http_msg,
-    std::size_t len, pion::error_code& ec)
+    std::size_t len, std::error_code& ec)
 {
     static const char MISSING_DATA_CHAR = 'X';
     pion::tribool rc = pion::indeterminate;
@@ -151,7 +151,7 @@ pion::tribool parser::parse_missing_data(http::message& http_msg,
                     for (std::size_t n = 0; n < len; ++n)
                         m_payload_handler(&MISSING_DATA_CHAR, 1);
                 } else {
-                    for (std::size_t n = 0; n < len && http_msg.get_chunk_cache().size() < m_max_content_length; ++n) 
+                    for (std::size_t n = 0; n < len && http_msg.get_chunk_cache().size() < m_max_content_length; ++n)
                         http_msg.get_chunk_cache().push_back(MISSING_DATA_CHAR);
                 }
 
@@ -210,7 +210,7 @@ pion::tribool parser::parse_missing_data(http::message& http_msg,
                 for (std::size_t n = 0; n < len; ++n)
                     m_payload_handler(&MISSING_DATA_CHAR, 1);
             } else {
-                for (std::size_t n = 0; n < len && http_msg.get_chunk_cache().size() < m_max_content_length; ++n) 
+                for (std::size_t n = 0; n < len && http_msg.get_chunk_cache().size() < m_max_content_length; ++n)
                     http_msg.get_chunk_cache().push_back(MISSING_DATA_CHAR);
             }
             m_bytes_last_read = len;
@@ -236,7 +236,7 @@ pion::tribool parser::parse_missing_data(http::message& http_msg,
 }
 
 pion::tribool parser::parse_headers(http::message& http_msg,
-    pion::error_code& ec)
+    std::error_code& ec)
 {
     //
     // note that pion::tribool may have one of THREE states:
@@ -251,7 +251,7 @@ pion::tribool parser::parse_headers(http::message& http_msg,
 
         if (m_save_raw_headers)
             m_raw_headers += *m_read_ptr;
-        
+
         switch (m_headers_parse_state) {
         case PARSE_METHOD_START:
             // we have not yet started parsing the HTTP method string
@@ -676,7 +676,7 @@ pion::tribool parser::parse_headers(http::message& http_msg,
             m_bytes_total_read += m_bytes_last_read;
             return true;
         }
-        
+
         ++m_read_ptr;
     }
 
@@ -700,7 +700,7 @@ void parser::update_message_with_header_data(http::message& http_msg) const
         if (! m_query_string.empty()) {
             if (! parse_url_encoded(http_request.get_queries(),
                                   m_query_string.c_str(),
-                                  m_query_string.size())) 
+                                  m_query_string.size()))
                 PION_LOG_WARN(m_logger, "Request query string parsing failed (URI)");
         }
 
@@ -740,7 +740,7 @@ void parser::update_message_with_header_data(http::message& http_msg) const
 }
 
 pion::tribool parser::finish_header_parsing(http::message& http_msg,
-    pion::error_code& ec)
+    std::error_code& ec)
 {
     pion::tribool rc = pion::indeterminate;
 
@@ -753,7 +753,7 @@ pion::tribool parser::finish_header_parsing(http::message& http_msg,
 
         // content is encoded using chunks
         m_message_parse_state = PARSE_CHUNKS;
-        
+
         // return true if parsing headers only
         if (m_parse_headers_only)
             rc = true;
@@ -800,7 +800,7 @@ pion::tribool parser::finish_header_parsing(http::message& http_msg,
             }
 
         } else {
-            // no content-length specified, and the content length cannot 
+            // no content-length specified, and the content length cannot
             // otherwise be determined
 
             // only if not a request, read through the close of the connection
@@ -822,24 +822,24 @@ pion::tribool parser::finish_header_parsing(http::message& http_msg,
     }
 
     finished_parsing_headers(ec);
-    
+
     return rc;
 }
-    
-bool parser::parse_uri(const std::string& uri, std::string& proto, 
-                      std::string& host, pion::uint16_t& port,
+
+bool parser::parse_uri(const std::string& uri, std::string& proto,
+                      std::string& host, uint16_t& port,
                       std::string& path, std::string& query)
 {
     size_t proto_end = uri.find("://");
     size_t proto_len = 0;
-    
+
     if(proto_end != std::string::npos) {
         proto = uri.substr(0, proto_end);
         proto_len = proto_end + 3; // add ://
     } else {
         proto.clear();
     }
-    
+
     // find a first slash charact
     // that indicates the end of the <server>:<port> part
     size_t server_port_end = uri.find('/', proto_len);
@@ -848,23 +848,23 @@ bool parser::parse_uri(const std::string& uri, std::string& proto,
         path = "/";
         server_port_end = uri.size();
     }
-    
+
     // copy <server>:<port> into temp string
-    std::string t; 
+    std::string t;
     t = uri.substr(proto_len, server_port_end - proto_len);
     size_t port_pos = t.find(':', 0);
-    
+
     // assign output host and port parameters
-    
+
     host = t.substr(0, port_pos); // if port_pos == npos, copy whole string
     if(host.length() == 0) {
         return false;
     }
-    
+
     // parse the port, if it's not empty
     if(port_pos != std::string::npos) {
         try {
-            port = pion::stoi(t.substr(port_pos+1));
+            port = std::stoi(t.substr(port_pos+1));
         } catch ( ... ) {
             return false;
         }
@@ -875,14 +875,14 @@ bool parser::parse_uri(const std::string& uri, std::string& proto,
     } else {
         port = 0;
     }
-    
+
     if (server_port_end < uri.size()) {
         // copy the rest of the URI into path part
         path = uri.substr(server_port_end);
-        
+
         // split the path and the query string parts
         size_t query_pos = path.find('?', 0);
-        
+
         if(query_pos != std::string::npos) {
             query = path.substr(query_pos + 1, path.length() - query_pos - 1);
             path = path.substr(0, query_pos);
@@ -890,7 +890,7 @@ bool parser::parse_uri(const std::string& uri, std::string& proto,
             query.clear();
         }
     }
-    
+
     return true;
 }
 
@@ -898,7 +898,7 @@ bool parser::parse_url_encoded(ihash_multimap& dict,
                                const char *ptr, const size_t len)
 {
     // sanity check
-    if (ptr == NULL || len == 0)
+    if (ptr == nullptr || len == 0)
         return true;
 
     // used to track whether we are parsing the name or value
@@ -980,15 +980,15 @@ bool parser::parse_multipart_form_data(ihash_multimap& dict,
                                        const char *ptr, const size_t len)
 {
     // sanity check
-    if (ptr == NULL || len == 0)
+    if (ptr == nullptr || len == 0)
         return true;
-    
+
     // parse field boundary
     std::size_t pos = content_type.find("boundary=");
     if (pos == std::string::npos)
         return false;
     const std::string boundary = std::string("--") + content_type.substr(pos+9);
-    
+
     // used to track what we are parsing
     enum MultiPartParseState {
         MP_PARSE_START,
@@ -1008,7 +1008,7 @@ bool parser::parse_multipart_form_data(ihash_multimap& dict,
 
     ptr = std::search(ptr, end_ptr, boundary.begin(), boundary.end());
 
-    while (ptr != NULL && ptr < end_ptr) {
+    while (ptr != nullptr && ptr < end_ptr) {
         switch (parse_state) {
             case MP_PARSE_START:
                 // start parsing a new field
@@ -1136,7 +1136,7 @@ bool parser::parse_multipart_form_data(ihash_multimap& dict,
         if (parse_state != MP_PARSE_START)
             ++ptr;
     }
-    
+
     return found_parameter;
 }
 
@@ -1146,7 +1146,7 @@ bool parser::parse_cookie_header(ihash_multimap& dict,
 {
     // BASED ON RFC 2109
     // http://www.ietf.org/rfc/rfc2109.txt
-    // 
+    //
     // The current implementation ignores cookie attributes which begin with '$'
     // (i.e. $Path=/, $Domain=, etc.)
 
@@ -1255,7 +1255,7 @@ bool parser::parse_cookie_header(ihash_multimap& dict,
 }
 
 pion::tribool parser::parse_chunks(http::message::chunk_cache_t& chunks,
-    pion::error_code& ec)
+    std::error_code& ec)
 {
     //
     // note that pion::tribool may have one of THREE states:
@@ -1276,7 +1276,7 @@ pion::tribool parser::parse_chunks(http::message::chunk_cache_t& chunks,
                 m_chunk_size_str.push_back(*m_read_ptr);
                 m_chunked_content_parse_state = PARSE_CHUNK_SIZE;
             } else if (*m_read_ptr == ' ' || *m_read_ptr == '\x09' || *m_read_ptr == '\x0D' || *m_read_ptr == '\x0A') {
-                // Ignore leading whitespace.  Technically, the standard probably doesn't allow white space here, 
+                // Ignore leading whitespace.  Technically, the standard probably doesn't allow white space here,
                 // but we'll be flexible, since there's no ambiguity.
                 break;
             } else {
@@ -1291,7 +1291,7 @@ pion::tribool parser::parse_chunks(http::message::chunk_cache_t& chunks,
             } else if (*m_read_ptr == '\x0D') {
                 m_chunked_content_parse_state = PARSE_EXPECTING_LF_AFTER_CHUNK_SIZE;
             } else if (*m_read_ptr == ' ' || *m_read_ptr == '\x09') {
-                // Ignore trailing tabs or spaces.  Technically, the standard probably doesn't allow this, 
+                // Ignore trailing tabs or spaces.  Technically, the standard probably doesn't allow this,
                 // but we'll be flexible, since there's no ambiguity.
                 m_chunked_content_parse_state = PARSE_EXPECTING_CR_AFTER_CHUNK_SIZE;
             } else if (*m_read_ptr == ';') {
@@ -1303,18 +1303,18 @@ pion::tribool parser::parse_chunks(http::message::chunk_cache_t& chunks,
                 return false;
             }
             break;
-                
+
         case PARSE_EXPECTING_IGNORED_TEXT_AFTER_CHUNK_SIZE:
             if (*m_read_ptr == '\x0D') {
                 m_chunked_content_parse_state = PARSE_EXPECTING_LF_AFTER_CHUNK_SIZE;
-            } 
+            }
             break;
 
         case PARSE_EXPECTING_CR_AFTER_CHUNK_SIZE:
             if (*m_read_ptr == '\x0D') {
                 m_chunked_content_parse_state = PARSE_EXPECTING_LF_AFTER_CHUNK_SIZE;
             } else if (*m_read_ptr == ' ' || *m_read_ptr == '\x09') {
-                // Ignore trailing tabs or spaces.  Technically, the standard probably doesn't allow this, 
+                // Ignore trailing tabs or spaces.  Technically, the standard probably doesn't allow this,
                 // but we'll be flexible, since there's no ambiguity.
                 break;
             } else {
@@ -1324,7 +1324,7 @@ pion::tribool parser::parse_chunks(http::message::chunk_cache_t& chunks,
             break;
 
         case PARSE_EXPECTING_LF_AFTER_CHUNK_SIZE:
-            // We received a CR; expecting LF to follow.  We can't be flexible here because 
+            // We received a CR; expecting LF to follow.  We can't be flexible here because
             // if we see anything other than LF, we can't be certain where the chunk starts.
             if (*m_read_ptr == '\x0A') {
                 m_bytes_read_in_current_chunk = 0;
@@ -1421,7 +1421,7 @@ pion::tribool parser::parse_chunks(http::message::chunk_cache_t& chunks,
 }
 
 pion::tribool parser::consume_content(http::message& http_msg,
-    pion::error_code& /* ec */)
+    std::error_code& /* ec */)
 {
     size_t content_bytes_to_read;
     size_t content_bytes_available = bytes_available();
@@ -1449,7 +1449,7 @@ pion::tribool parser::consume_content(http::message& http_msg,
         if (m_bytes_content_read + content_bytes_to_read > m_max_content_length) {
             // read would exceed maximum size for content buffer
             // copy only enough bytes to fill up the content buffer
-            memcpy(http_msg.get_content() + m_bytes_content_read, m_read_ptr, 
+            memcpy(http_msg.get_content() + m_bytes_content_read, m_read_ptr,
                 m_max_content_length - m_bytes_content_read);
         } else {
             // copy all bytes available
@@ -1564,7 +1564,7 @@ void parser::compute_msg_status(http::message& http_msg, bool msg_parsed_ok )
     http_msg.set_status(st);
 }
 
-void parser::create_error_category(void)
+void parser::create_error_category()
 {
     static error_category_t UNIQUE_ERROR_CATEGORY;
     m_error_category_ptr = &UNIQUE_ERROR_CATEGORY;
@@ -1573,29 +1573,29 @@ void parser::create_error_category(void)
 bool parser::parse_forwarded_for(const std::string& header, std::string& public_ip)
 {
     // static regex's used to check for ipv4 address
-    static const pion::regex IPV4_ADDR_RX("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
+    static const std::regex IPV4_ADDR_RX("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
 
     /// static regex used to check for private/local networks:
     /// 10.*
     /// 127.*
     /// 192.168.*
     /// 172.16-31.*
-    static const pion::regex PRIVATE_NET_RX("(10\\.[0-9]{1,3}|127\\.[0-9]{1,3}|192\\.168|172\\.1[6-9]|172\\.2[0-9]|172\\.3[0-1])\\.[0-9]{1,3}\\.[0-9]{1,3}");
+    static const std::regex PRIVATE_NET_RX("(10\\.[0-9]{1,3}|127\\.[0-9]{1,3}|192\\.168|172\\.1[6-9]|172\\.2[0-9]|172\\.3[0-1])\\.[0-9]{1,3}\\.[0-9]{1,3}");
 
     // sanity check
     if (header.empty())
         return false;
 
     // local variables re-used by while loop
-    pion::match_results<std::string::const_iterator> m;
+    std::match_results<std::string::const_iterator> m;
     std::string::const_iterator start_it = header.begin();
 
     // search for next ip address within the header
-    while (pion::regex_search(start_it, header.end(), m, IPV4_ADDR_RX)) {
+    while (std::regex_search(start_it, header.end(), m, IPV4_ADDR_RX)) {
         // get ip that matched
         std::string ip_str(m[0].first, m[0].second);
         // check if public network ip address
-        if (! pion::regex_match(ip_str, PRIVATE_NET_RX) ) {
+        if (! std::regex_match(ip_str, PRIVATE_NET_RX) ) {
             // match found!
             public_ip = ip_str;
             return true;

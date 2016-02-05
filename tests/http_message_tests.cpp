@@ -75,12 +75,12 @@ BOOST_AUTO_TEST_CASE(checkHTTPResponseAssignmentOperator) {
 
 BOOST_AUTO_TEST_CASE(checkGetFirstLineForRequest) {
     http::request http_request;
-    
+
     http_request.set_method("GET");
     http_request.set_resource("/");
 
     BOOST_CHECK_EQUAL(http_request.get_first_line(), "GET / HTTP/1.1");
-    
+
     http_request.set_method("POST");
 
     BOOST_CHECK_EQUAL(http_request.get_first_line(), "POST / HTTP/1.1");
@@ -97,12 +97,12 @@ BOOST_AUTO_TEST_CASE(checkGetFirstLineForRequest) {
 
 BOOST_AUTO_TEST_CASE(checkGetFirstLineForResponse) {
     http::response http_response;
-    
+
     http_response.set_status_code(http::types::RESPONSE_CODE_OK);
     http_response.set_status_message(http::types::RESPONSE_MESSAGE_OK);
 
     BOOST_CHECK_EQUAL(http_response.get_first_line(), "HTTP/1.1 200 OK");
-    
+
     http_response.set_status_code(http::types::RESPONSE_CODE_NOT_FOUND);
 
     BOOST_CHECK_EQUAL(http_response.get_first_line(), "HTTP/1.1 404 OK");
@@ -276,7 +276,7 @@ public:
     char* m_content_buffer;
 };
 
-BOOST_AUTO_TEST_SUITE_FIXTURE_TEMPLATE(HTTPMessageWithTextOnlyContent_S, 
+BOOST_AUTO_TEST_SUITE_FIXTURE_TEMPLATE(HTTPMessageWithTextOnlyContent_S,
                                        FIXTURE_TYPE_LIST(HTTPMessageWithTextOnlyContent_F))
 
 BOOST_AUTO_TEST_CASE_FIXTURE_TEMPLATE(checkGetContentReturnsPointer) {
@@ -333,13 +333,13 @@ public:
     {
         openNewFile();
     }
-    
+
     ~HTTPMessageReadWrite_F() {
         m_file.close();
         boost::filesystem::remove(m_filename);
     }
-    
-    void openNewFile(void) {
+
+    void openNewFile() {
         if (m_file.is_open()) {
             m_file.close();
             m_file.clear();
@@ -347,8 +347,8 @@ public:
         m_file.open(m_filename.c_str(), std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
         BOOST_REQUIRE(m_file.is_open());
     }
-    
-    std::string getFileContents(void) {
+
+    std::string getFileContents() {
         // if only it were this easy... unfortunately order of headers can vary
         //std::stringstream ss;
         //m_file.seekg(0);
@@ -362,7 +362,7 @@ public:
 
         m_file.clear();
         m_file.seekg(0);
-        
+
         while (m_file.getline(line, 255)) {
             std::size_t len = strlen(line);
             if (len > 0 && line[len-1]=='\r')
@@ -383,7 +383,7 @@ public:
                 lines.push_back(line);
             }
         }
-        
+
         std::sort(lines.begin(), lines.end());
         BOOST_FOREACH(const std::string& l, lines) {
             ss << l << "\r\n";
@@ -403,13 +403,13 @@ BOOST_AUTO_TEST_CASE(checkWriteReadHTTPRequestNoContent) {
     http::request req;
     req.set_resource("/test.html");
     req.add_header("Test", "Something");
-    
+
     // write to file
     boost::system::error_code ec;
     req.write(m_file, ec);
     BOOST_REQUIRE(! ec);
     m_file.flush();
-    
+
     // read from file
     http::request req2;
     m_file.clear();
@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_CASE(checkWriteReadHTTPRequestNoContent) {
     http::request req3;
     req3.read(m_file, ec);
     BOOST_CHECK_EQUAL(ec.value(), boost::system::errc::io_error);
-    
+
     // check request read from file
     BOOST_CHECK_EQUAL(req2.get_resource(), "/test.html");
     BOOST_CHECK_EQUAL(req2.get_header("Test"), "Something");
@@ -448,25 +448,25 @@ BOOST_AUTO_TEST_CASE(checkWriteReadHTTPResponseNoContent) {
     rsp.set_status_code(202);
     rsp.set_status_message("Hi There");
     rsp.add_header("HeaderA", "a value");
-    
+
     // write to file
     boost::system::error_code ec;
     rsp.write(m_file, ec);
     BOOST_REQUIRE(! ec);
     m_file.flush();
-    
+
     // read from file
     http::response rsp2;
     m_file.clear();
     m_file.seekg(0);
     rsp2.read(m_file, ec);
     BOOST_REQUIRE(! ec);
-    
+
     // make sure we're now at EOF
     http::response rsp3;
     rsp3.read(m_file, ec);
     BOOST_CHECK_EQUAL(ec.value(), boost::system::errc::io_error);
-    
+
     // check response read from file
     BOOST_CHECK_EQUAL(rsp2.get_status_code(), 202U);
     BOOST_CHECK_EQUAL(rsp2.get_status_message(), "Hi There");
@@ -513,7 +513,7 @@ BOOST_AUTO_TEST_CASE(checkWriteReadMixedMessages) {
     req.set_content("My request content");
     req.write(m_file, ec);
     BOOST_REQUIRE(! ec);
-    
+
     // another response
     rsp.set_status_code(302);
     rsp.set_status_message("Hello There");
@@ -531,7 +531,7 @@ BOOST_AUTO_TEST_CASE(checkWriteReadMixedMessages) {
 
     // flush file output
     m_file.flush();
-    
+
     // validate file contents
     std::string contents = getFileContents();
     BOOST_CHECK_EQUAL(contents, "GET /test.html HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 0\r\nTest: Something\r\n\r\n"
@@ -547,7 +547,7 @@ BOOST_AUTO_TEST_CASE(checkWriteReadMixedMessages) {
     http::request req1;
     req1.read(m_file, ec);
     BOOST_REQUIRE(! ec);
-    
+
     // read first response
     http::response rsp1;
     rsp1.read(m_file, ec);
@@ -557,7 +557,7 @@ BOOST_AUTO_TEST_CASE(checkWriteReadMixedMessages) {
     http::request req2;
     req2.read(m_file, ec);
     BOOST_REQUIRE(! ec);
-    
+
     // read second response
     http::response rsp2;
     rsp2.read(m_file, ec);
@@ -569,7 +569,7 @@ BOOST_AUTO_TEST_CASE(checkWriteReadMixedMessages) {
     http::request req3;
     req3.read(m_file, ec);
     BOOST_REQUIRE(! ec);
-    
+
     // write everything back to new file
     openNewFile();
     req1.write(m_file, ec);
@@ -596,13 +596,13 @@ BOOST_AUTO_TEST_CASE(checkWriteHTTPRequestWithCookies) {
     http::request req;
     req.set_resource("/test.html");
     req.add_cookie("a", "value");
-    
+
     // write to file
     boost::system::error_code ec;
     req.write(m_file, ec);
     BOOST_REQUIRE(! ec);
     m_file.flush();
-    
+
     // validate file contents
     std::string req_contents = getFileContents();
     BOOST_CHECK_EQUAL(req_contents, "GET /test.html HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 0\r\nCookie: a=value\r\n\r\n");
@@ -620,7 +620,7 @@ BOOST_AUTO_TEST_CASE(checkWriteHTTPResponseWithCookies) {
     rsp.write(m_file, ec);
     BOOST_REQUIRE(! ec);
     m_file.flush();
-    
+
     // validate file contents
     std::string rsp_contents = getFileContents();
     BOOST_CHECK_EQUAL(rsp_contents, "HTTP/1.1 200 OK\r\nConnection: Keep-Alive\r\nContent-Length: 0\r\nSet-Cookie: a=\"value\"; Version=1; Path=/\r\n\r\n");

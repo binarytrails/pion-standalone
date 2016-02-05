@@ -8,7 +8,7 @@
 //
 
 #include <pion/config.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <mutex>
 #include <pion/error.hpp>
 #include <pion/plugin.hpp>
 
@@ -20,9 +20,9 @@
 
 
 namespace pion {    // begin namespace pion
-    
+
 // static members of plugin
-    
+
 const std::string           plugin::PION_PLUGIN_CREATE("pion_create_");
 const std::string           plugin::PION_PLUGIN_DESTROY("pion_destroy_");
 #ifdef PION_WIN32
@@ -31,13 +31,13 @@ const std::string           plugin::PION_PLUGIN_DESTROY("pion_destroy_");
     const std::string           plugin::PION_PLUGIN_EXTENSION(".so");
 #endif
 const std::string           plugin::PION_CONFIG_EXTENSION(".conf");
-pion::once_flag            plugin::m_instance_flag = PION_ONCE_INIT;
-plugin::config_type    *plugin::m_config_ptr = NULL;
+std::once_flag            plugin::m_instance_flag;
+plugin::config_type    *plugin::m_config_ptr = nullptr;
 
-    
+
 // plugin member functions
-    
-void plugin::create_plugin_config(void)
+
+void plugin::create_plugin_config()
 {
     static config_type UNIQUE_PION_PLUGIN_CONFIG;
     m_config_ptr = &UNIQUE_PION_PLUGIN_CONFIG;
@@ -64,15 +64,15 @@ void plugin::add_plugin_directory(const std::string& dir)
     if (! pion::filesystem::exists(plugin_path) )
         PION_THROW_EXCEPTION( error::directory_not_found() << error::errinfo_dir_name(dir) );
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     cfg.m_plugin_dirs.push_back(plugin_path.string());
-	
+
 }
 
-void plugin::reset_plugin_directories(void)
+void plugin::reset_plugin_directories()
 {
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     cfg.m_plugin_dirs.clear();
 }
 
@@ -81,7 +81,7 @@ void plugin::open(const std::string& plugin_name)
     // check first if name matches an existing plugin name
     {
         config_type& cfg = get_plugin_config();
-        pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+        std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
         map_type::iterator itr = cfg.m_plugin_map.find(plugin_name);
         if (itr != cfg.m_plugin_map.end()) {
             release_data();  // make sure we're not already pointing to something
@@ -90,33 +90,33 @@ void plugin::open(const std::string& plugin_name)
             return;
         }
     }
-    
+
     // nope, look for shared library file
     std::string plugin_file;
 
     if (!find_plugin_file(plugin_file, plugin_name))
         PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_name) );
-        
+
     open_file(plugin_file);
 }
 
 void plugin::open_file(const std::string& plugin_file)
 {
     release_data();  // make sure we're not already pointing to something
-    
+
     // use a temporary object first since open_plugin() may throw
     data_type plugin_data(get_plugin_name(plugin_file));
-    
+
     // check to see if we already have a matching shared library
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     map_type::iterator itr = cfg.m_plugin_map.find(plugin_data.m_plugin_name);
     if (itr == cfg.m_plugin_map.end()) {
         // no plug-ins found with the same name
-        
+
         // open up the shared library using our temporary data object
         open_plugin(plugin_file, plugin_data);   // may throw
-        
+
         // all is good -> insert it into the plug-in map
         m_plugin_data = new data_type(plugin_data);
         cfg.m_plugin_map.insert( std::make_pair(m_plugin_data->m_plugin_name,
@@ -125,37 +125,37 @@ void plugin::open_file(const std::string& plugin_file)
         // found an existing plug-in with the same name
         m_plugin_data = itr->second;
     }
-    
+
     // increment the number of references
     ++ m_plugin_data->m_references;
 }
 
-void plugin::release_data(void)
+void plugin::release_data()
 {
-    if (m_plugin_data != NULL) {
+    if (m_plugin_data != nullptr) {
         config_type& cfg = get_plugin_config();
-        pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+        std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
         // double-check after locking mutex
-        if (m_plugin_data != NULL && --m_plugin_data->m_references == 0) {
+        if (m_plugin_data != nullptr && --m_plugin_data->m_references == 0) {
             // no more references to the plug-in library
-            
+
             // make sure it's not a static library
-            if (m_plugin_data->m_lib_handle != NULL) {
-            
+            if (m_plugin_data->m_lib_handle != nullptr) {
+
                 // release the shared object
                 close_dynamic_library(m_plugin_data->m_lib_handle);
-            
+
                 // remove it from the plug-in map
                 map_type::iterator itr = cfg.m_plugin_map.find(m_plugin_data->m_plugin_name);
                 // check itr just to be safe (it SHOULD always find a match)
                 if (itr != cfg.m_plugin_map.end())
                     cfg.m_plugin_map.erase(itr);
-            
+
                 // release the heap object
                 delete m_plugin_data;
             }
         }
-        m_plugin_data = NULL;
+        m_plugin_data = nullptr;
     }
 }
 
@@ -163,9 +163,9 @@ void plugin::grab_data(const plugin& p)
 {
     release_data();  // make sure we're not already pointing to something
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     m_plugin_data = const_cast<data_type*>(p.m_plugin_data);
-    if (m_plugin_data != NULL) {
+    if (m_plugin_data != nullptr) {
         ++ m_plugin_data->m_references;
     }
 }
@@ -179,14 +179,14 @@ bool plugin::find_file(std::string& path_to_file, const std::string& name,
 
     // nope, check search paths
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     for (std::vector<std::string>::iterator i = cfg.m_plugin_dirs.begin();
          i != cfg.m_plugin_dirs.end(); ++i)
     {
         if (check_for_file(path_to_file, *i, name, extension))
             return true;
     }
-    
+
     // no plug-in file found
     return false;
 }
@@ -242,14 +242,14 @@ void plugin::open_plugin(const std::string& plugin_file,
 {
     // get the name of the plugin (for create/destroy symbol names)
     plugin_data.m_plugin_name = get_plugin_name(plugin_file);
-    
+
     // attempt to open the plugin; note that this tries all search paths
     // and also tries a variety of platform-specific extensions
     plugin_data.m_lib_handle = load_dynamic_library(plugin_file.c_str());
     if (plugin_data.m_lib_handle == NULL) {
 #ifndef PION_WIN32
         const char *error_msg = dlerror();
-        if (error_msg != NULL) {
+        if (error_msg != nullptr) {
             std::string error_str(plugin_file);
             error_str += " (";
             error_str += error_msg;
@@ -262,12 +262,12 @@ void plugin::open_plugin(const std::string& plugin_file,
             PION_THROW_EXCEPTION( error::open_plugin()
                                   << error::errinfo_plugin_name(plugin_data.m_plugin_name) );
     }
-    
+
     // find the function used to create new plugin objects
     plugin_data.m_create_func =
         get_library_symbol(plugin_data.m_lib_handle,
                          PION_PLUGIN_CREATE + plugin_data.m_plugin_name);
-    if (plugin_data.m_create_func == NULL) {
+    if (plugin_data.m_create_func == nullptr) {
         close_dynamic_library(plugin_data.m_lib_handle);
         PION_THROW_EXCEPTION( error::plugin_missing_symbol()
                               << error::errinfo_plugin_name(plugin_data.m_plugin_name)
@@ -278,7 +278,7 @@ void plugin::open_plugin(const std::string& plugin_file,
     plugin_data.m_destroy_func =
         get_library_symbol(plugin_data.m_lib_handle,
                          PION_PLUGIN_DESTROY + plugin_data.m_plugin_name);
-    if (plugin_data.m_destroy_func == NULL) {
+    if (plugin_data.m_destroy_func == nullptr) {
         close_dynamic_library(plugin_data.m_lib_handle);
         PION_THROW_EXCEPTION( error::plugin_missing_symbol()
                               << error::errinfo_plugin_name(plugin_data.m_plugin_name)
@@ -296,7 +296,7 @@ void plugin::get_all_plugin_names(std::vector<std::string>& plugin_names)
     // Iterate through all the Plugin directories.
     std::vector<std::string>::iterator it;
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     for (it = cfg.m_plugin_dirs.begin(); it != cfg.m_plugin_dirs.end(); ++it) {
         // Find all shared libraries in the directory and add them to the list of Plugin names.
 		std::vector<pion::filesystem::path> dir_content = pion::get_dir_content( *it );
@@ -308,11 +308,11 @@ void plugin::get_all_plugin_names(std::vector<std::string>& plugin_names)
             }
         }
     }
-    
+
     // Append static-linked libraries
     for (map_type::const_iterator itr = cfg.m_plugin_map.begin(); itr != cfg.m_plugin_map.end(); ++itr) {
         const data_type& plugin_data = *(itr->second);
-        if (plugin_data.m_lib_handle == NULL) {
+        if (plugin_data.m_lib_handle == nullptr) {
             plugin_names.push_back(plugin_data.m_plugin_name);
         }
     }
@@ -340,16 +340,16 @@ void *plugin::load_dynamic_library(const std::string& plugin_file)
 void plugin::close_dynamic_library(void *lib_handle)
 {
 #ifdef PION_WIN32
-    // Apparently, FreeLibrary sometimes causes crashes when running 
+    // Apparently, FreeLibrary sometimes causes crashes when running
     // unit tests under Windows.
     // It's hard to pin down, because many things can suppress the crashes,
-    // such as enabling logging or setting breakpoints (i.e. things that 
-    // might help pin it down.)  Also, it's very intermittent, and can be 
+    // such as enabling logging or setting breakpoints (i.e. things that
+    // might help pin it down.)  Also, it's very intermittent, and can be
     // strongly affected by other processes that are running.
-    // So, please don't call FreeLibrary here unless you've been able to 
+    // So, please don't call FreeLibrary here unless you've been able to
     // reproduce and fix the crashing of the unit tests.
 
-    (void)lib_handle;
+    ()lib_handle;
     //FreeLibrary((HINSTANCE) lib_handle);
 #else
     dlclose(lib_handle);
@@ -371,13 +371,13 @@ void plugin::add_static_entry_point(const std::string& plugin_name,
 {
     // check for duplicate
     config_type& cfg = get_plugin_config();
-    pion::unique_lock<pion::mutex> plugin_lock(cfg.m_plugin_mutex);
+    std::unique_lock<std::mutex> plugin_lock(cfg.m_plugin_mutex);
     map_type::iterator itr = cfg.m_plugin_map.find(plugin_name);
     if (itr == cfg.m_plugin_map.end()) {
         // no plug-ins found with the same name
         // all is good -> insert it into the plug-in map
         data_type *plugin_data = new data_type(plugin_name);
-        plugin_data->m_lib_handle = NULL; // this will indicate that we are using statically linked plug-in
+        plugin_data->m_lib_handle = nullptr; // this will indicate that we are using statically linked plug-in
         plugin_data->m_create_func = create_func;
         plugin_data->m_destroy_func = destroy_func;
         cfg.m_plugin_map.insert(std::make_pair(plugin_name, plugin_data));

@@ -11,7 +11,7 @@
 #define __PION_SPDYDECOMPRESSOR_HEADER__
 
 #include <pion/config.hpp>
-#include <pion/utils/pion_memory.hpp>
+#include <memory>
 #include <pion/spdy/types.hpp>
 #include <zlib.h>
 
@@ -33,24 +33,24 @@ public:
         /// maximum size of an uncompressed spdy header
         MAX_UNCOMPRESSED_DATA_BUF_SIZE = 16384
     };
-    
+
     /// constructs a new decompressor object (default constructor)
     decompressor();
-    
+
     /// destructor
     ~decompressor();
-    
+
     /**
      * decompresses the http content
      *
      * @return the uncompressed string, or null on failure
      */
     char* decompress(const char *compressed_data_ptr,
-                     pion::uint32_t stream_id,
+                     uint32_t stream_id,
                      const spdy_control_frame_info& frame,
-                     pion::uint32_t header_block_length);
+                     uint32_t header_block_length);
 
-    
+
 protected:
 
     /**
@@ -60,31 +60,31 @@ protected:
      */
     bool spdy_decompress_header(const char *compressed_data_ptr,
                                 z_streamp decomp,
-                                pion::uint32_t length,
-                                pion::uint32_t& uncomp_length);
+                                uint32_t length,
+                                uint32_t& uncomp_length);
 
 
 private:
-    
+
     /// zlib stream for decompression request packets
     z_streamp                           m_request_zstream;
 
     /// zlib stream for decompression response packets
     z_streamp                           m_response_zstream;
-    
+
     /// dictionary identifier
-    pion::uint32_t                     m_dictionary_id;
-    
+    uint32_t                     m_dictionary_id;
+
     /// Used for decompressing spdy headers
-    pion::uint8_t                      m_uncompressed_header[MAX_UNCOMPRESSED_DATA_BUF_SIZE];
+    uint8_t                      m_uncompressed_header[MAX_UNCOMPRESSED_DATA_BUF_SIZE];
 
     // SPDY Dictionary used for zlib decompression
     static const char                   SPDY_ZLIB_DICTIONARY[];
 };
-    
+
 /// data type for a spdy reader pointer
-typedef pion::shared_ptr<decompressor>       decompressor_ptr;
-    
+typedef std::shared_ptr<decompressor>       decompressor_ptr;
+
 }   // end namespace spdy
 }   // end namespace pion
 

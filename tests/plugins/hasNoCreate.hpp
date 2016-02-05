@@ -14,12 +14,12 @@
 
 ///
 /// This class has no corresponding create function or destroy function.
-/// 
+///
 class hasNoCreate : public InterfaceStub
 {
 public:
-    hasNoCreate(void) {}
-    ~hasNoCreate() {}
+    hasNoCreate() = default;
+    ~hasNoCreate() = default;
 };
 
 #endif

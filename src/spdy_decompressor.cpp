@@ -12,15 +12,15 @@
 #include <iostream>
 #include <fstream>
 #include <pion/spdy/decompressor.hpp>
-#include <pion/utils/pion_assert.hpp>
+#include <cassert>
 
 
 namespace pion {    // begin namespace pion
-namespace spdy {    // begin namespace spdy 
+namespace spdy {    // begin namespace spdy
 
 
 // decompressor static members
-    
+
 const char decompressor::SPDY_ZLIB_DICTIONARY[] =
     "optionsgetheadpostputdeletetraceacceptaccept-charsetaccept-encodingaccept-"
     "languageauthorizationexpectfromhostif-modified-sinceif-matchif-none-matchi"
@@ -35,15 +35,15 @@ const char decompressor::SPDY_ZLIB_DICTIONARY[] =
     "pOctNovDecchunkedtext/htmlimage/pngimage/jpgimage/gifapplication/xmlapplic"
     "ation/xhtmltext/plainpublicmax-agecharset=iso-8859-1utf-8gzipdeflateHTTP/1"
     ".1statusversionurl";
-    
+
 
 // decompressor member functions
 
 decompressor::decompressor()
-    : m_request_zstream(NULL), m_response_zstream(NULL)
+    : m_request_zstream(nullptr), m_response_zstream(nullptr)
 {
     m_request_zstream = (z_streamp)malloc(sizeof(z_stream));
-    PION_ASSERT(m_request_zstream);
+    assert(m_request_zstream);
 
     m_request_zstream->zalloc = Z_NULL;
     m_request_zstream->zfree = Z_NULL;
@@ -52,10 +52,10 @@ decompressor::decompressor()
     m_request_zstream->next_out = Z_NULL;
     m_request_zstream->avail_in = 0;
     m_request_zstream->avail_out = 0;
-    
+
     m_response_zstream = (z_streamp)malloc(sizeof(z_stream));
-    PION_ASSERT(m_response_zstream);
-    
+    assert(m_response_zstream);
+
     m_response_zstream->zalloc = Z_NULL;
     m_response_zstream->zfree = Z_NULL;
     m_response_zstream->opaque = Z_NULL;
@@ -63,14 +63,14 @@ decompressor::decompressor()
     m_response_zstream->next_out = Z_NULL;
     m_response_zstream->avail_in = 0;
     m_response_zstream->avail_out = 0;
-    
+
     int retcode = inflateInit2(m_request_zstream, MAX_WBITS);
     if (retcode == Z_OK) {
         retcode = inflateInit2(m_response_zstream, MAX_WBITS);
         if (retcode == Z_OK) {
             // Get the dictionary id
             m_dictionary_id = adler32(0L, Z_NULL, 0);
-            
+
             m_dictionary_id = adler32(m_dictionary_id,
                                       (const Bytef *)SPDY_ZLIB_DICTIONARY,
                                       sizeof(SPDY_ZLIB_DICTIONARY));
@@ -87,12 +87,12 @@ decompressor::~decompressor()
 }
 
 char* decompressor::decompress(const char *compressed_data_ptr,
-                               pion::uint32_t stream_id,
+                               uint32_t stream_id,
                                const spdy_control_frame_info& frame,
-                               pion::uint32_t header_block_length)
+                               uint32_t header_block_length)
 {
     /// Get our decompressor.
-    z_streamp decomp = NULL;
+    z_streamp decomp = nullptr;
     if (stream_id % 2 == 0) {
         // Even streams are server-initiated and should never get a
         // client-initiated header block. Use reply decompressor.
@@ -108,13 +108,13 @@ char* decompressor::decompress(const char *compressed_data_ptr,
         decomp = m_response_zstream;
     } else {
         // Unhandled case. This should never happen.
-        PION_ASSERT(false);
+        assert(false);
     }
-    PION_ASSERT(decomp);
-    
+    assert(decomp);
+
     // Decompress the data
-    pion::uint32_t uncomp_length = 0;
-    
+    uint32_t uncomp_length = 0;
+
     // Catch decompression failures.
     if (!spdy_decompress_header(compressed_data_ptr, decomp,
                                 header_block_length, uncomp_length))
@@ -123,25 +123,25 @@ char* decompressor::decompress(const char *compressed_data_ptr,
         // This error is not catastrophic as many times we might get inconsistent
         // spdy header frames and we should just log error and continue.
         // No need to call SetError()
-        return NULL;
+        return nullptr;
     }
     return reinterpret_cast<char*>(m_uncompressed_header);
 }
 
 bool decompressor::spdy_decompress_header(const char *compressed_data_ptr,
                                           z_streamp decomp,
-                                          pion::uint32_t length,
-                                          pion::uint32_t& uncomp_length) {
+                                          uint32_t length,
+                                          uint32_t& uncomp_length) {
     int retcode;
-    const pion::uint8_t *hptr = (pion::uint8_t *)compressed_data_ptr;
-    
+    const uint8_t *hptr = (uint8_t *)compressed_data_ptr;
+
     decomp->next_in = (Bytef *)hptr;
     decomp->avail_in = length;
     decomp->next_out = m_uncompressed_header;
     decomp->avail_out = MAX_UNCOMPRESSED_DATA_BUF_SIZE;
-    
+
     retcode = inflate(decomp, Z_SYNC_FLUSH);
-    
+
     if (retcode == Z_NEED_DICT) {
         if (decomp->adler != m_dictionary_id) {
             // Decompressor wants a different dictionary id
@@ -154,16 +154,16 @@ bool decompressor::spdy_decompress_header(const char *compressed_data_ptr,
             }
         }
     }
-    
-    // Handle Errors. 
+
+    // Handle Errors.
     if (retcode != Z_OK) {
         // This error is not catastrophic as many times we might get inconsistent
         // spdy header frames and we should just log error and continue.
         // No need to call SetError()
         return false;
     }
-    
-    // Handle successful inflation. 
+
+    // Handle successful inflation.
     uncomp_length = MAX_UNCOMPRESSED_DATA_BUF_SIZE - decomp->avail_out;
     if (decomp->avail_in != 0) {
         // Error condition
@@ -172,9 +172,9 @@ bool decompressor::spdy_decompress_header(const char *compressed_data_ptr,
         // No need to call SetError()
         return false;
     }
-    
+
     return true;
 }
-        
+
 }   // end namespace spdy
 }   // end namespace pion

@@ -12,7 +12,7 @@
 
 #include <pion/config.hpp>
 #include <string>
-#include <pion/utils/pion_memory.hpp>
+#include <memory>
 #include <pion/error.hpp>
 #include <pion/algorithm.hpp>
 #include <pion/http/request.hpp>
@@ -25,17 +25,17 @@ namespace http {    // begin namespace http
 
 ///
 /// plugin_service: interface class for web services
-/// 
-class plugin_service :
-    private pion::noncopyable
+///
+class plugin_service
 {
 public:
+	plugin_service( const plugin_service & ) = delete;
 
     /// default constructor
-    plugin_service(void) {}
+    plugin_service() = default;
 
     /// virtual destructor
-    virtual ~plugin_service() {}
+    virtual ~plugin_service() = default;
 
     /**
      * attempts to handle a new HTTP request
@@ -44,7 +44,7 @@ public:
      * @param tcp_conn the TCP connection that has the new request
      */
     virtual void operator()(const http::request_ptr& http_request_ptr, const tcp::connection_ptr& tcp_conn) = 0;
-    
+
     /**
      * sets a configuration option
      *
@@ -54,19 +54,19 @@ public:
     virtual void set_option(const std::string& name, const std::string& /* value */) {
         PION_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
     }
-    
+
     /// called when the web service's server is starting
-    virtual void start(void) {}
-    
+    virtual void start() {}
+
     /// called when the web service's server is stopping
-    virtual void stop(void) {}
-    
+    virtual void stop() {}
+
     /// sets the URI stem or resource that is bound to the web service
     inline void set_resource(const std::string& str) { m_resource = str; }
 
-    /// returns the URI stem or resource that is bound to the web service   
-    inline const std::string& get_resource(void) const { return m_resource; }
-    
+    /// returns the URI stem or resource that is bound to the web service
+    inline const std::string& get_resource() const { return m_resource; }
+
     /// returns the path to the resource requested, relative to the web service's location
     inline std::string get_relative_resource(const std::string& resource_requested) const {
         if (resource_requested.size() <= get_resource().size()) {
@@ -77,11 +77,11 @@ public:
         // strip the web service's resource path plus the slash after it
         return algorithm::url_decode(resource_requested.substr(get_resource().size() + 1));
     }
-    
-    
+
+
 private:
-        
-    /// the URI stem or resource that is bound to the web service   
+
+    /// the URI stem or resource that is bound to the web service
     std::string m_resource;
 };
 
@@ -101,7 +101,7 @@ private:
 // The "pion_create" function is used to create new instances of your service.
 // The "pion_destroy" function is used to destroy instances of your service.
 //
-// extern "C" MyPluginName *pion_create_MyPluginName(void) {
+// extern "C" MyPluginName *pion_create_MyPluginName() {
 //      return new MyPluginName;
 // }
 //

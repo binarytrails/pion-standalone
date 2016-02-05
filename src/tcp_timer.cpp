@@ -8,8 +8,7 @@
 //
 
 #include <pion/tcp/timer.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_chrono.hpp>
+#include <functional>
 
 
 namespace pion {    // begin namespace pion
@@ -24,26 +23,26 @@ timer::timer(const tcp::connection_ptr& conn_ptr)
 {
 }
 
-void timer::start(const pion::uint32_t seconds)
+void timer::start(const uint32_t seconds)
 {
-    pion::unique_lock<pion::mutex> timer_lock(m_mutex);
+    std::unique_lock<std::mutex> timer_lock(m_mutex);
     m_timer_active = true;
-    m_timer.expires_from_now(pion::chrono::seconds(seconds));
-    m_timer.async_wait(pion::bind(&timer::timer_callback,
-        shared_from_this(), pion::placeholders::_1));
+    m_timer.expires_from_now(std::chrono::seconds(seconds));
+    m_timer.async_wait(std::bind(&timer::timer_callback,
+        shared_from_this(), std::placeholders::_1));
 }
 
-void timer::cancel(void)
+void timer::cancel()
 {
-    pion::unique_lock<pion::mutex> timer_lock(m_mutex);
+    std::unique_lock<std::mutex> timer_lock(m_mutex);
     m_was_cancelled = true;
     if (m_timer_active)
         m_timer.cancel();
 }
 
-void timer::timer_callback(const pion::error_code& /* ec */)
+void timer::timer_callback(const std::error_code& /* ec */)
 {
-    pion::unique_lock<pion::mutex> timer_lock(m_mutex);
+    std::unique_lock<std::mutex> timer_lock(m_mutex);
     m_timer_active = false;
     if (! m_was_cancelled)
         m_conn_ptr->cancel();

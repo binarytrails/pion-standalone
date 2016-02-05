@@ -31,19 +31,18 @@ using namespace pion;
 
 ///
 /// tcp_stream_tests_F: fixture used for performing tcp::stream tests
-/// 
+///
 class tcp_stream_tests_F {
 public:
-    
+
     /// data type for a function that handles tcp::stream connections
     typedef boost::function1<void,tcp::stream&>   connection_handler;
-    
-    
+
+
     // default constructor and destructor
-    tcp_stream_tests_F() {
-    }
-    virtual ~tcp_stream_tests_F() {}
-    
+    tcp_stream_tests_F() = default;
+    virtual ~tcp_stream_tests_F() = default;
+
     /**
      * listen for a TCP connection and call the connection handler when connected
      *
@@ -74,17 +73,17 @@ public:
         boost::system::error_code ec = listener_stream.accept(tcp_acceptor);
         tcp_acceptor.close();
         BOOST_REQUIRE(! ec);
-        
+
         // call the connection handler
         conn_handler(listener_stream);
     }
-    
+
     /// sends a "Hello" to a tcp::stream
     static void sendHello(tcp::stream& str) {
         str << "Hello" << std::endl;
         str.flush();
     }
-    
+
     /// port where acceptor listens
     int     m_port;
 
@@ -93,7 +92,7 @@ public:
 
     /// used to notify test thread when acceptConnection() is ready
     boost::condition                m_accept_ready;
-    
+
     /// used to sync test thread with acceptConnection()
     boost::mutex                    m_accept_mutex;
 };
@@ -118,7 +117,7 @@ BOOST_AUTO_TEST_CASE(checkTCPConnectToAnotherStream) {
     boost::system::error_code ec;
     ec = client_str.connect(boost::asio::ip::address::from_string("127.0.0.1"), m_port);
     BOOST_REQUIRE(! ec);
-    
+
     // get the hello message
     std::string response_msg;
     client_str >> response_msg;
@@ -135,7 +134,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 ///
 /// tcp_stream_buffer_tests_F: fixture that includes a big data buffer used for tests
-/// 
+///
 class tcp_stream_buffer_tests_F
     : public tcp_stream_tests_F
 {
@@ -147,19 +146,19 @@ public:
             m_big_buf[n] = char(n);
         }
     }
-    virtual ~tcp_stream_buffer_tests_F() {}
-    
+    virtual ~tcp_stream_buffer_tests_F() = default;
+
     /// sends the big buffer contents to a tcp::stream
     void sendBigBuffer(tcp::stream& str) {
         str.write(m_big_buf, BIG_BUF_SIZE);
         str.flush();
     }
-    
+
     /// big data buffer used for the tests
     char m_big_buf[BIG_BUF_SIZE];
 };
 
-    
+
 BOOST_FIXTURE_TEST_SUITE(tcp_stream_buffer_tests_S, tcp_stream_buffer_tests_F)
 
 BOOST_AUTO_TEST_CASE(checkSendAndReceiveBiggerThanBuffers) {
@@ -177,7 +176,7 @@ BOOST_AUTO_TEST_CASE(checkSendAndReceiveBiggerThanBuffers) {
     boost::system::error_code ec;
     ec = client_str.connect(boost::asio::ip::address::from_string("127.0.0.1"), m_port);
     BOOST_REQUIRE(! ec);
-    
+
     // read the big buffer contents
     char another_buf[BIG_BUF_SIZE];
     BOOST_REQUIRE(client_str.read(another_buf, BIG_BUF_SIZE));

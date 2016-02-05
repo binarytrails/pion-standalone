@@ -28,14 +28,14 @@ const unsigned int          server::MAX_REDIRECTS = 10;
 void server::handle_connection(const tcp::connection_ptr& tcp_conn)
 {
     request_reader_ptr my_reader_ptr;
-    my_reader_ptr = request_reader::create(tcp_conn, pion::bind(&server::handle_request,
-                                           this, pion::placeholders::_1, pion::placeholders::_2, pion::placeholders::_3));
+    my_reader_ptr = request_reader::create(tcp_conn, std::bind(&server::handle_request,
+                                           this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     my_reader_ptr->set_max_content_length(m_max_content_length);
     my_reader_ptr->receive();
 }
 
 void server::handle_request(const http::request_ptr& http_request_ptr,
-    const tcp::connection_ptr& tcp_conn, const pion::error_code& ec)
+    const tcp::connection_ptr& tcp_conn, const std::error_code& ec)
 {
     if (ec || ! http_request_ptr->is_valid()) {
         tcp_conn->set_lifecycle(tcp::connection::LIFECYCLE_CLOSE); // make sure it will get closed
@@ -44,9 +44,9 @@ void server::handle_request(const http::request_ptr& http_request_ptr,
             PION_LOG_INFO(m_logger, "Invalid HTTP request (" << ec.message() << ")");
             m_bad_request_handler(http_request_ptr, tcp_conn);
         } else {
-            static const pion::error_condition
-                    ERRCOND_CANCELED(pion::errc::operation_canceled /*, pion::system_category()*/),
-                    ERRCOND_EOF(pion::asio::error::eof, pion::asio::error::misc_category);
+            static const std::error_condition
+                    ERRCOND_CANCELED(std::errc::operation_canceled /*, std::system_category()*/),
+                    ERRCOND_EOF(asio::error::eof, asio::error::misc_category);
 
             if (ec == ERRCOND_CANCELED || ec == ERRCOND_EOF) {
                 // don't spam the log with common (non-)errors that happen during normal operation
@@ -59,7 +59,7 @@ void server::handle_request(const http::request_ptr& http_request_ptr,
         }
         return;
     }
-        
+
     PION_LOG_DEBUG(m_logger, "Received a valid HTTP request");
 
     // strip off trailing slash if the request has one
@@ -92,11 +92,11 @@ void server::handle_request(const http::request_ptr& http_request_ptr,
             return;
         }
     }
-    
+
     // search for a handler matching the resource requested
     request_handler_t request_handler;
     if (find_request_handler(resource_requested, request_handler)) {
-        
+
         // try to handle the request
         try {
             request_handler(http_request_ptr, tcp_conn);
@@ -117,9 +117,9 @@ void server::handle_request(const http::request_ptr& http_request_ptr,
             PION_LOG_ERROR(m_logger, "HTTP request handler: " << pion::diagnostic_information(e));
             m_server_error_handler(http_request_ptr, tcp_conn, pion::diagnostic_information(e));
         }
-        
+
     } else {
-        
+
         // no web services found that could handle the request
         PION_LOG_INFO(m_logger, "No HTTP request handlers found for resource: "
                       << resource_requested);
@@ -129,15 +129,15 @@ void server::handle_request(const http::request_ptr& http_request_ptr,
         m_not_found_handler(http_request_ptr, tcp_conn);
     }
 }
-    
+
 bool server::find_request_handler(const std::string& resource,
                                     request_handler_t& request_handler) const
 {
     // first make sure that HTTP resources are registered
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
     if (m_resources.empty())
         return false;
-    
+
     // iterate through each resource entry that may match the resource
     resource_map_t::const_iterator i = m_resources.upper_bound(resource);
     while (i != m_resources.begin()) {
@@ -152,14 +152,14 @@ bool server::find_request_handler(const std::string& resource,
             }
         }
     }
-    
+
     return false;
 }
 
 void server::add_resource(const std::string& resource,
                              request_handler_t request_handler)
 {
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
     const std::string clean_resource(strip_trailing_slash(resource));
     m_resources.insert(std::make_pair(clean_resource, request_handler));
     PION_LOG_INFO(m_logger, "Added request handler for HTTP resource: " << clean_resource);
@@ -167,7 +167,7 @@ void server::add_resource(const std::string& resource,
 
 void server::remove_resource(const std::string& resource)
 {
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
     const std::string clean_resource(strip_trailing_slash(resource));
     m_resources.erase(clean_resource);
     PION_LOG_INFO(m_logger, "Removed request handler for HTTP resource: " << clean_resource);
@@ -176,7 +176,7 @@ void server::remove_resource(const std::string& resource)
 void server::add_redirect(const std::string& requested_resource,
                              const std::string& new_resource)
 {
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
     const std::string clean_requested_resource(strip_trailing_slash(requested_resource));
     const std::string clean_new_resource(strip_trailing_slash(new_resource));
     m_redirects.insert(std::make_pair(clean_requested_resource, clean_new_resource));
@@ -194,7 +194,7 @@ void server::handle_bad_request(const http::request_ptr& http_request_ptr,
         "<p>Your browser sent a request that this server could not understand.</p>\n"
         "</body></html>\n";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_BAD_REQUEST);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_BAD_REQUEST);
     writer->write_no_copy(BAD_REQUEST_HTML);
@@ -214,7 +214,7 @@ void server::handle_not_found_request(const http::request_ptr& http_request_ptr,
         " was not found on this server.</p>\n"
         "</body></html>\n";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_NOT_FOUND);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_NOT_FOUND);
     writer->write_no_copy(NOT_FOUND_HTML_START);
@@ -237,7 +237,7 @@ void server::handle_server_error(const http::request_ptr& http_request_ptr,
         "</strong></p>\n"
         "</body></html>\n";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_SERVER_ERROR);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_SERVER_ERROR);
     writer->write_no_copy(SERVER_ERROR_HTML_START);
@@ -262,7 +262,7 @@ void server::handle_forbidden_request(const http::request_ptr& http_request_ptr,
         "</strong></p>\n"
         "</body></html>\n";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_FORBIDDEN);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_FORBIDDEN);
     writer->write_no_copy(FORBIDDEN_HTML_START);
@@ -287,7 +287,7 @@ void server::handle_method_not_allowed(const http::request_ptr& http_request_ptr
         " is not allowed on this server.</p>\n"
         "</body></html>\n";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_METHOD_NOT_ALLOWED);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_METHOD_NOT_ALLOWED);
     if (! allowed_methods.empty())

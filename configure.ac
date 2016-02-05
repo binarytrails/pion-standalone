@@ -42,7 +42,7 @@ m4_include([build/pion-config.inc])
 
 # Output Makefiles
 AC_OUTPUT(pion.pc Makefile
-	include/Makefile include/pion/Makefile include/pion/tcp/Makefile
+	include/Makefile include/pion/Makefile include/pion/tcp/Makefile include/pion/utils/Makefile
 	include/pion/http/Makefile include/pion/test/Makefile
 	include/pion/spdy/Makefile src/Makefile
 	services/Makefile utils/Makefile tests/Makefile tests/plugins/Makefile)

@@ -8,7 +8,7 @@
 //
 
 #include "EchoService.hpp"
-#include <pion/utils/pion_functional.hpp>
+#include <functional>
 #include <pion/algorithm.hpp>
 #include <pion/http/response_writer.hpp>
 #include <pion/user.hpp>
@@ -18,7 +18,7 @@ using namespace pion;
 namespace pion {        // begin namespace pion
 namespace plugins {     // begin namespace plugins
 
-    
+
 /// used by handle_request to write dictionary terms
 void writeDictionaryTerm(http::response_writer_ptr& writer,
                          const ihash_multimap::value_type& val)
@@ -43,12 +43,12 @@ void EchoService::operator()(const http::request_ptr& http_request_ptr, const tc
     static const std::string COOKIE_PARAMS_TEXT("[Cookie Parameters]");
     static const std::string POST_CONTENT_TEXT("[POST Content]");
     static const std::string USER_INFO_TEXT("[USER Info]");
-    
+
     // Set Content-type to "text/plain" (plain ascii text)
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_content_type(http::types::CONTENT_TYPE_TEXT);
-    
+
     // write request information
     writer->write_no_copy(REQUEST_ECHO_TEXT);
     writer->write_no_copy(http::types::STRING_CRLF);
@@ -73,13 +73,13 @@ void EchoService::operator()(const http::request_ptr& http_request_ptr, const tc
         << (unsigned long)http_request_ptr->get_content_length()
         << http::types::STRING_CRLF
         << http::types::STRING_CRLF;
-             
+
     // write request headers
     writer->write_no_copy(REQUEST_HEADERS_TEXT);
     writer->write_no_copy(http::types::STRING_CRLF);
     writer->write_no_copy(http::types::STRING_CRLF);
     std::for_each(http_request_ptr->get_headers().begin(), http_request_ptr->get_headers().end(),
-                  pion::bind(&writeDictionaryTerm, writer, pion::placeholders::_1));
+                  std::bind(&writeDictionaryTerm, writer, std::placeholders::_1));
     writer->write_no_copy(http::types::STRING_CRLF);
 
     // write query parameters
@@ -87,17 +87,17 @@ void EchoService::operator()(const http::request_ptr& http_request_ptr, const tc
     writer->write_no_copy(http::types::STRING_CRLF);
     writer->write_no_copy(http::types::STRING_CRLF);
     std::for_each(http_request_ptr->get_queries().begin(), http_request_ptr->get_queries().end(),
-                  pion::bind(&writeDictionaryTerm, writer, pion::placeholders::_1));
+                  std::bind(&writeDictionaryTerm, writer, std::placeholders::_1));
     writer->write_no_copy(http::types::STRING_CRLF);
-    
+
     // write cookie parameters
     writer->write_no_copy(COOKIE_PARAMS_TEXT);
     writer->write_no_copy(http::types::STRING_CRLF);
     writer->write_no_copy(http::types::STRING_CRLF);
     std::for_each(http_request_ptr->get_cookies().begin(), http_request_ptr->get_cookies().end(),
-                  pion::bind(&writeDictionaryTerm, writer, pion::placeholders::_1));
+                  std::bind(&writeDictionaryTerm, writer, std::placeholders::_1));
     writer->write_no_copy(http::types::STRING_CRLF);
-    
+
     // write POST content
     writer->write_no_copy(POST_CONTENT_TEXT);
     writer->write_no_copy(http::types::STRING_CRLF);
@@ -107,7 +107,7 @@ void EchoService::operator()(const http::request_ptr& http_request_ptr, const tc
         writer->write_no_copy(http::types::STRING_CRLF);
         writer->write_no_copy(http::types::STRING_CRLF);
     }
-    
+
     // if authenticated, write user info
     user_ptr user = http_request_ptr->get_user();
     if (user) {
@@ -117,7 +117,7 @@ void EchoService::operator()(const http::request_ptr& http_request_ptr, const tc
         writer << "User authenticated, username: " << user->get_username();
         writer->write_no_copy(http::types::STRING_CRLF);
     }
-    
+
     // send the writer
     writer->send();
 }
@@ -128,7 +128,7 @@ void EchoService::operator()(const http::request_ptr& http_request_ptr, const tc
 
 
 /// creates new EchoService objects
-extern "C" PION_PLUGIN pion::plugins::EchoService *pion_create_EchoService(void)
+extern "C" PION_PLUGIN pion::plugins::EchoService *pion_create_EchoService()
 {
     return new pion::plugins::EchoService();
 }

@@ -11,7 +11,7 @@
 #include <pion/config.hpp>
 
 /// creates new hasCreateAndDestroy objects
-extern "C" PION_PLUGIN hasCreateAndDestroy *pion_create_hasCreateAndDestroy(void)
+extern "C" PION_PLUGIN hasCreateAndDestroy *pion_create_hasCreateAndDestroy()
 {
     return new hasCreateAndDestroy();
 }

@@ -16,7 +16,7 @@ using namespace pion;
 namespace pion {        // begin namespace pion
 namespace plugins {     // begin namespace plugins
 
-    
+
 // CookieService member functions
 
 /// handles requests for CookieService
@@ -28,7 +28,7 @@ void CookieService::operator()(const http::request_ptr& http_request_ptr, const 
 
     // Set Content-type for HTML and write the header
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_content_type(http::types::CONTENT_TYPE_HTML);
     writer->write_no_copy(HEADER_HTML);
 
@@ -57,7 +57,7 @@ void CookieService::operator()(const http::request_ptr& http_request_ptr, const 
             writer << "\n<p>[Error: Unrecognized action]</p>\n\n";
         }
     }
-    
+
     // display cookie headers in request
     if (http_request_ptr->has_header(http::types::HEADER_COOKIE)) {
         writer << "\n<h2>Cookie Headers</h2>\n<ul>\n";
@@ -73,7 +73,7 @@ void CookieService::operator()(const http::request_ptr& http_request_ptr, const 
     } else {
         writer << "\n<h2>No Cookie Headers</h2>\n\n";
     }
-    
+
     // display existing cookies
     ihash_multimap& cookie_params = http_request_ptr->get_cookies();
     if (! cookie_params.empty()) {
@@ -98,10 +98,10 @@ void CookieService::operator()(const http::request_ptr& http_request_ptr, const 
         "Value: <input type=\"text\" name=\"cookie_value\"><br />\n"
         "<input type=\"submit\" name=\"action\" value=\"Add Cookie\"></p>\n"
         "</form>\n\n";
-    
+
     // write the footer
     writer->write_no_copy(FOOTER_HTML);
-    
+
     // send the writer
     writer->send();
 }
@@ -112,7 +112,7 @@ void CookieService::operator()(const http::request_ptr& http_request_ptr, const 
 
 
 /// creates new CookieService objects
-extern "C" PION_PLUGIN pion::plugins::CookieService *pion_create_CookieService(void)
+extern "C" PION_PLUGIN pion::plugins::CookieService *pion_create_CookieService()
 {
     return new pion::plugins::CookieService();
 }

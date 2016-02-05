@@ -24,12 +24,12 @@ using namespace pion;
 
 ///
 /// HelloServer: simple TCP server that sends "Hello there!" after receiving some data
-/// 
+///
 class HelloServer
     : public pion::tcp::server
 {
 public:
-    virtual ~HelloServer() {}
+    virtual ~HelloServer() = default;
 
     /**
      * creates a Hello server
@@ -37,10 +37,10 @@ public:
      * @param tcp_port port number used to listen for new connections (IPv4)
      */
     HelloServer(const unsigned int tcp_port = 0) : pion::tcp::server(tcp_port) {}
-    
+
     /**
      * handles a new TCP connection
-     * 
+     *
      * @param tcp_conn the new TCP connection to handle
      */
     virtual void handle_connection(const pion::tcp::connection_ptr& tcp_conn) {
@@ -48,12 +48,12 @@ public:
         tcp_conn->set_lifecycle(pion::tcp::connection::LIFECYCLE_CLOSE);  // make sure it will get closed
         tcp_conn->async_write(boost::asio::buffer(HELLO_MESSAGE),
                               boost::bind(&HelloServer::handle_write, this, tcp_conn,
-                                          boost::asio::placeholders::error));
+                                          boost::std::placeholders::_1));
     }
 
-    
+
 private:
-    
+
     /**
      * called after the initial greeting has been sent
      *
@@ -67,11 +67,11 @@ private:
             tcp_conn->finish();
         } else {
             tcp_conn->async_read_some(boost::bind(&HelloServer::handleRead, this, tcp_conn,
-                                                  boost::asio::placeholders::error,
-                                                  boost::asio::placeholders::bytes_transferred));
+                                                  boost::std::placeholders::_1,
+                                                  boost::std::placeholders::_2));
         }
     }
-    
+
     /**
      * called after the client's greeting has been received
      *
@@ -98,7 +98,7 @@ private:
 
 ///
 /// HelloServerTests_F: fixture used for running (Hello) server tests
-/// 
+///
 class HelloServerTests_F {
 public:
     // default constructor and destructor
@@ -111,7 +111,7 @@ public:
     ~HelloServerTests_F() {
         hello_server_ptr->stop();
     }
-    inline tcp::server_ptr& getServerPtr(void) { return hello_server_ptr; }
+    inline tcp::server_ptr& getServerPtr() { return hello_server_ptr; }
 
     /**
      * check at 0.1 second intervals for up to one second to see if the number
@@ -162,8 +162,8 @@ BOOST_AUTO_TEST_CASE(checkNumberOfActiveServerConnections) {
 
     boost::asio::ip::tcp::iostream tcp_stream_d(localhost);
     checkNumConnectionsForUpToOneSecond(static_cast<std::size_t>(4));
-    
-    // close connections    
+
+    // close connections
     tcp_stream_a.close();
     checkNumConnectionsForUpToOneSecond(static_cast<std::size_t>(3));
 
@@ -199,7 +199,7 @@ BOOST_AUTO_TEST_CASE(checkServerConnectionBehavior) {
     // send greeting to the second server
     tcp_stream_b << "Hi!\n";
     tcp_stream_b.flush();
-    
+
     // receive goodbye from the first server
     std::getline(tcp_stream_a, str);
     tcp_stream_a.close();
@@ -245,12 +245,12 @@ public:
      */
     MockSyncServer(scheduler& sched, const unsigned int tcp_port = 0)
         : pion::tcp::server(sched, tcp_port) {}
-    
-    virtual ~MockSyncServer() {}
+
+    virtual ~MockSyncServer() = default;
 
     /**
      * handles a new TCP connection
-     * 
+     *
      * @param tcp_conn the new TCP connection to handle
      */
     virtual void handle_connection(const pion::tcp::connection_ptr& tcp_conn) {
@@ -278,7 +278,7 @@ public:
         tcp_conn->finish();
     }
 
-    void setExpectations(const std::map<std::string, std::string>& expectedHeaders, 
+    void setExpectations(const std::map<std::string, std::string>& expectedHeaders,
                          const std::string& expectedContent,
                          boost::function1<bool, http::request&> additional_request_test = NULL)
     {
@@ -296,7 +296,7 @@ private:
 
 ///
 /// MockSyncServerTests_F: fixture used for running MockSyncServer tests
-/// 
+///
 class MockSyncServerTests_F {
 public:
     MockSyncServerTests_F()
@@ -307,8 +307,8 @@ public:
     ~MockSyncServerTests_F() {
         m_sync_server_ptr->stop();
     }
-    inline boost::shared_ptr<MockSyncServer>& getServerPtr(void) { return m_sync_server_ptr; }
-    inline boost::asio::io_service& get_io_service(void) { return m_scheduler.get_io_service(); }
+    inline boost::shared_ptr<MockSyncServer>& getServerPtr() { return m_sync_server_ptr; }
+    inline boost::asio::io_service& get_io_service() { return m_scheduler.get_io_service(); }
 
 private:
     single_service_scheduler          m_scheduler;
@@ -334,7 +334,7 @@ BOOST_AUTO_TEST_CASE(checkReceivedRequestUsingStream) {
     expectedHeaders[http::types::HEADER_CONTENT_LENGTH] = "8";
     expectedHeaders[http::types::HEADER_TRANSFER_ENCODING] = ""; // i.e. check that there is no transfer encoding header
     getServerPtr()->setExpectations(expectedHeaders, "12345678");
-    
+
     // send request to the server
     tcp_stream << "POST /resource1 HTTP/1.1" << http::types::STRING_CRLF;
     tcp_stream << http::types::HEADER_CONTENT_LENGTH << ": 8" << http::types::STRING_CRLF << http::types::STRING_CRLF;
@@ -358,17 +358,17 @@ BOOST_AUTO_TEST_CASE(checkReceivedRequestUsingChunkedStream) {
     expectedHeaders[http::types::HEADER_TRANSFER_ENCODING] = "chunked";
     expectedHeaders[http::types::HEADER_CONTENT_LENGTH] = ""; // i.e. check that there is no content length header
     getServerPtr()->setExpectations(expectedHeaders, "abcdefghijklmno");
-    
+
     // send request to the server
     tcp_stream << "POST /resource1 HTTP/1.1" << http::types::STRING_CRLF;
     tcp_stream << http::types::HEADER_TRANSFER_ENCODING << ": chunked" << http::types::STRING_CRLF << http::types::STRING_CRLF;
     // write first chunk size
     tcp_stream << "A" << http::types::STRING_CRLF;
-    // write first chunk 
+    // write first chunk
     tcp_stream << "abcdefghij" << http::types::STRING_CRLF;
     // write second chunk size
     tcp_stream << "5" << http::types::STRING_CRLF;
-    // write second chunk 
+    // write second chunk
     tcp_stream << "klmno" << http::types::STRING_CRLF;
     // write final chunk size
     tcp_stream << "0" << http::types::STRING_CRLF;
@@ -391,7 +391,7 @@ BOOST_AUTO_TEST_CASE(checkReceivedRequestUsingExtraWhiteSpaceAroundChunkSizes) {
     std::map<std::string, std::string> expectedHeaders;
     expectedHeaders[http::types::HEADER_TRANSFER_ENCODING] = "chunked";
     getServerPtr()->setExpectations(expectedHeaders, "abcdefghijklmno");
-    
+
     // send request to the server
     tcp_stream << "POST /resource1 HTTP/1.1" << http::types::STRING_CRLF;
     tcp_stream << http::types::HEADER_TRANSFER_ENCODING << ": chunked" << http::types::STRING_CRLF << http::types::STRING_CRLF;
@@ -431,7 +431,7 @@ BOOST_AUTO_TEST_CASE(checkReceivedRequestUsingRequestObject) {
     expectedHeaders[http::types::HEADER_TRANSFER_ENCODING] = ""; // i.e. check that there is no transfer encoding header
     expectedHeaders["foo"] = "bar";
     getServerPtr()->setExpectations(expectedHeaders, "wxyz");
-    
+
     // send request to the server
     http::request http_request;
     http_request.add_header("foo", "bar");
@@ -459,7 +459,7 @@ BOOST_AUTO_TEST_CASE(checkQueryOfReceivedRequestParsed) {
     // set expectations for received request
     std::map<std::string, std::string> empty_map;
     getServerPtr()->setExpectations(empty_map, "", queryKeyXHasValueY);
-    
+
     // send request to the server
     tcp_stream << "GET /resource1?x=y HTTP/1.1" << http::types::STRING_CRLF << http::types::STRING_CRLF;
     tcp_stream.flush();
@@ -480,7 +480,7 @@ BOOST_AUTO_TEST_CASE(checkUrlEncodedQueryInPostContentParsed) {
     std::map<std::string, std::string> expectedHeaders;
     expectedHeaders[http::types::HEADER_CONTENT_LENGTH] = "3";
     getServerPtr()->setExpectations(expectedHeaders, "x=y", queryKeyXHasValueY);
-    
+
     // send request to the server
     tcp_stream << "POST /resource1 HTTP/1.1" << http::types::STRING_CRLF
                << http::types::HEADER_CONTENT_LENGTH << ": 3" << http::types::STRING_CRLF
@@ -511,7 +511,7 @@ BOOST_AUTO_TEST_CASE(checkCharsetOfReceivedRequest) {
     std::map<std::string, std::string> expectedHeaders;
     expectedHeaders[http::types::HEADER_CONTENT_LENGTH] = "3";
     getServerPtr()->setExpectations(expectedHeaders, "x=y", charsetIsEcmaCyrillic);
-    
+
     // send request to the server
     tcp_stream << "POST /resource1 HTTP/1.1" << http::types::STRING_CRLF
                << http::types::HEADER_CONTENT_LENGTH << ": 3" << http::types::STRING_CRLF

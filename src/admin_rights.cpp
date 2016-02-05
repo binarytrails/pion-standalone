@@ -13,7 +13,7 @@
     #include <sys/types.h>
     #include <unistd.h>
     #include <sys/types.h>
-    #include <pion/utils/pion_regex.hpp>
+    #include <regex>
     #include <pion/utils/pion_string.hpp>
     #include <fstream>
 #endif
@@ -24,8 +24,8 @@ namespace pion {    // begin namespace pion
 
 // static members of admin_rights
 
-const pion::int16_t    admin_rights::ADMIN_USER_ID = 0;
-pion::mutex            admin_rights::m_mutex;
+const int16_t    admin_rights::ADMIN_USER_ID = 0;
+std::mutex            admin_rights::m_mutex;
 
 
 // admin_rights member functions
@@ -37,7 +37,7 @@ admin_rights::admin_rights(bool use_log)
     m_lock(m_mutex), m_user_id(-1), m_has_rights(false), m_use_log(use_log)
 {}
 
-void admin_rights::release(void)
+void admin_rights::release()
 {}
 
 long admin_rights::run_as_user(const std::string& /* user_name */)
@@ -75,7 +75,7 @@ admin_rights::admin_rights(bool use_log)
     }
 }
 
-void admin_rights::release(void)
+void admin_rights::release()
 {
     if (m_has_rights) {
         if ( seteuid(m_user_id) == 0 ) {
@@ -118,9 +118,9 @@ long admin_rights::find_system_id(const std::string& name,
     const std::string& file)
 {
     // check if name is the system id
-    const pion::regex just_numbers("\\d+");
-    if (pion::regex_match(name, just_numbers)) {
-        return pion::stoi(name);
+    const std::regex just_numbers("\\d+");
+    if (std::regex_match(name, just_numbers)) {
+        return std::stol(name);
     }
 
     // open system file
@@ -131,9 +131,9 @@ long admin_rights::find_system_id(const std::string& name,
 
     // find id in system file
     typedef std::vector<std::string> Tok;
-    const char sep = ':';
+    char sep{':'};
     std::string line;
-    pion::int32_t system_id = -1;
+    int32_t system_id = -1;
 
     while (std::getline(system_file, line, '\n')) {
         Tok tokens = pion::split(line, sep);
@@ -141,10 +141,10 @@ long admin_rights::find_system_id(const std::string& name,
         if (token_it != tokens.end() && *token_it == name) {
             // found line matching name
             if (++token_it != tokens.end() && ++token_it != tokens.end()
-                && pion::regex_match(*token_it, just_numbers))
+                && std::regex_match(*token_it, just_numbers))
             {
                 // found id as third parameter
-                system_id = pion::stoi(*token_it);
+                system_id = std::stoi(*token_it);
             }
             break;
         }
@@ -154,6 +154,6 @@ long admin_rights::find_system_id(const std::string& name,
 }
 
 #endif  // #ifdef PION_WIN32
-    
+
 }   // end namespace pion
 

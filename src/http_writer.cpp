@@ -7,7 +7,7 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <pion/utils/pion_asio.hpp>
+#include <asio.hpp>
 #include <pion/http/writer.hpp>
 #include <pion/http/message.hpp>
 
@@ -33,7 +33,7 @@ void writer::prepare_write_buffers(http::message::write_buffers_t& write_buffers
     // combine I/O write buffers (headers and content) so that everything
     // can be sent together; otherwise, we would have to send headers
     // and content separately, which would not be as efficient
-    
+
     // don't send anything if there is no data in content buffers
     if (m_content_length > 0) {
         if (supports_chunked_messages() && sending_chunked_message()) {
@@ -41,38 +41,38 @@ void writer::prepare_write_buffers(http::message::write_buffers_t& write_buffers
             // write chunk length in hex
             char cast_buf[35];
             sprintf(cast_buf, "%lx", static_cast<long>(m_content_length));
-            
+
             // add chunk length as a string at the back of the text cache
             m_text_cache.push_back(cast_buf);
             // append length of chunk to write_buffers
-            write_buffers.push_back(pion::asio::buffer(m_text_cache.back()));
+            write_buffers.push_back(asio::buffer(m_text_cache.back()));
             // append an extra CRLF for chunk formatting
-            write_buffers.push_back(pion::asio::buffer(http::types::STRING_CRLF));
-            
+            write_buffers.push_back(asio::buffer(http::types::STRING_CRLF));
+
             // append response content buffers
             write_buffers.insert(write_buffers.end(), m_content_buffers.begin(),
                                  m_content_buffers.end());
             // append an extra CRLF for chunk formatting
-            write_buffers.push_back(pion::asio::buffer(http::types::STRING_CRLF));
+            write_buffers.push_back(asio::buffer(http::types::STRING_CRLF));
         } else {
             // append response content buffers
             write_buffers.insert(write_buffers.end(), m_content_buffers.begin(),
                                  m_content_buffers.end());
         }
     }
-    
+
     // prepare a zero-byte (final) chunk
     if (send_final_chunk && supports_chunked_messages() && sending_chunked_message()) {
         // add chunk length as a string at the back of the text cache
         m_text_cache.push_back("0");
         // append length of chunk to write_buffers
-        write_buffers.push_back(pion::asio::buffer(m_text_cache.back()));
+        write_buffers.push_back(asio::buffer(m_text_cache.back()));
         // append an extra CRLF for chunk formatting
-        write_buffers.push_back(pion::asio::buffer(http::types::STRING_CRLF));
-        write_buffers.push_back(pion::asio::buffer(http::types::STRING_CRLF));
+        write_buffers.push_back(asio::buffer(http::types::STRING_CRLF));
+        write_buffers.push_back(asio::buffer(http::types::STRING_CRLF));
     }
 }
 
-    
+
 }   // end namespace http
 }   // end namespace pion

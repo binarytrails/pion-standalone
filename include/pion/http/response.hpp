@@ -11,7 +11,7 @@
 #define __PION_HTTP_RESPONSE_HEADER__
 
 #include <pion/config.hpp>
-#include <pion/utils/pion_memory.hpp>
+#include <memory>
 #include <pion/utils/pion_string.hpp>
 #include <pion/http/message.hpp>
 #include <pion/http/request.hpp>
@@ -20,10 +20,10 @@
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
 
-    
+
 ///
 /// response: container for HTTP response information
-/// 
+///
 class response
     : public http::message
 {
@@ -50,7 +50,7 @@ public:
         : m_status_code(RESPONSE_CODE_OK), m_status_message(RESPONSE_MESSAGE_OK),
         m_request_method(request_method)
     {}
-    
+
     /// copy constructor
     response(const response& http_response)
         : message(http_response),
@@ -58,19 +58,19 @@ public:
         m_status_message(http_response.m_status_message),
         m_request_method(http_response.m_request_method)
     {}
-    
+
     /// default constructor: you are strongly encouraged to use one of the other
     /// constructors, since response parsing is influenced by the request method
-    response(void)
+    response()
         : m_status_code(RESPONSE_CODE_OK),
         m_status_message(RESPONSE_MESSAGE_OK)
     {}
-    
+
     /// virtual destructor
-    virtual ~response() {}
+    virtual ~response() = default;
 
     /// clears all response data
-    virtual void clear(void) {
+    virtual void clear() {
         http::message::clear();
         m_status_code = RESPONSE_CODE_OK;
         m_status_message = RESPONSE_MESSAGE_OK;
@@ -78,7 +78,7 @@ public:
     }
 
     /// the content length may be implied for certain types of responses
-    virtual bool is_content_length_implied(void) const {
+    virtual bool is_content_length_implied() const {
         return (m_request_method == REQUEST_METHOD_HEAD             // HEAD responses have no content
                 || (m_status_code >= 100 && m_status_code <= 199)       // 1xx responses have no content
                 || m_status_code == 204 || m_status_code == 205     // no content & reset content responses
@@ -87,7 +87,7 @@ public:
     }
 
     /**
-     * Updates HTTP request information for the response object (use 
+     * Updates HTTP request information for the response object (use
      * this if the response cannot be constructed using the request)
      *
      * @param http_request the request that this is responding to
@@ -104,7 +104,7 @@ public:
             set_version_minor(0);
         }
     }
-    
+
     /// sets the HTTP response status code
     inline void set_status_code(unsigned int n) {
         m_status_code = n;
@@ -116,13 +116,13 @@ public:
         m_status_message = msg;
         clear_first_line();
     }
-    
+
     /// returns the HTTP response status code
-    inline unsigned int get_status_code(void) const { return m_status_code; }
-    
+    inline unsigned int get_status_code() const { return m_status_code; }
+
     /// returns the HTTP response status message
-    inline const std::string& get_status_message(void) const { return m_status_message; }
-    
+    inline const std::string& get_status_message() const { return m_status_message; }
+
 
     /**
      * sets a cookie by adding a Set-Cookie header (see RFC 2109)
@@ -135,7 +135,7 @@ public:
         std::string set_cookie_header(make_set_cookie_header(name, value, "/"));
         add_header(HEADER_SET_COOKIE, set_cookie_header);
     }
-    
+
     /**
      * sets a cookie by adding a Set-Cookie header (see RFC 2109)
      * the cookie will be discarded by the user-agent when it closes
@@ -150,7 +150,7 @@ public:
         std::string set_cookie_header(make_set_cookie_header(name, value, path));
         add_header(HEADER_SET_COOKIE, set_cookie_header);
     }
-    
+
     /**
      * sets a cookie by adding a Set-Cookie header (see RFC 2109)
      *
@@ -165,7 +165,7 @@ public:
         std::string set_cookie_header(make_set_cookie_header(name, value, path, true, max_age));
         add_header(HEADER_SET_COOKIE, set_cookie_header);
     }
-    
+
     /**
      * sets a cookie by adding a Set-Cookie header (see RFC 2109)
      *
@@ -179,62 +179,62 @@ public:
         std::string set_cookie_header(make_set_cookie_header(name, value, "/", true, max_age));
         add_header(HEADER_SET_COOKIE, set_cookie_header);
     }
-    
+
     /// deletes cookie called name by adding a Set-Cookie header (cookie has no path)
     inline void delete_cookie(const std::string& name) {
         std::string set_cookie_header(make_set_cookie_header(name, "", "/", true, 0));
         add_header(HEADER_SET_COOKIE, set_cookie_header);
     }
-    
+
     /// deletes cookie called name by adding a Set-Cookie header (cookie has a path)
     inline void delete_cookie(const std::string& name, const std::string& path) {
         std::string set_cookie_header(make_set_cookie_header(name, "", path, true, 0));
         add_header(HEADER_SET_COOKIE, set_cookie_header);
     }
-    
+
     /// sets the time that the response was last modified (Last-Modified)
     inline void set_last_modified(const unsigned long t) {
         change_header(HEADER_LAST_MODIFIED, get_date_string(t));
     }
-    
-    
+
+
 protected:
-    
+
     /// updates the string containing the first line for the HTTP message
-    virtual void update_first_line(void) const {
+    virtual void update_first_line() const {
         // start out with the HTTP version
         m_first_line = get_version_string();
         m_first_line += ' ';
         // append the response status code
-        m_first_line +=  pion::to_string(m_status_code);
+        m_first_line +=  std::to_string(m_status_code);
         m_first_line += ' ';
         // append the response status message
         m_first_line += m_status_message;
     }
-    
+
     /// appends HTTP headers for any cookies defined by the http::message
-    virtual void append_cookie_headers(void) {
+    virtual void append_cookie_headers() {
         for (ihash_multimap::const_iterator i = get_cookies().begin(); i != get_cookies().end(); ++i) {
             set_cookie(i->first, i->second);
         }
     }
 
-    
+
 private:
 
     /// The HTTP response status code
     unsigned int            m_status_code;
-    
+
     /// The HTTP response status message
     std::string             m_status_message;
-    
+
     /// HTTP method used by the request
     std::string             m_request_method;
 };
 
 
 /// data type for a HTTP response pointer
-typedef pion::shared_ptr<response>     response_ptr;
+typedef std::shared_ptr<response>     response_ptr;
 
 
 }   // end namespace http

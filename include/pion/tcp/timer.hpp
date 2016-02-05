@@ -11,11 +11,11 @@
 #define __PION_TCP_TIMER_HEADER__
 
 #include <pion/config.hpp>
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_memory.hpp>
-#include <pion/utils/pion_mutex.hpp>
-#include <pion/utils/pion_stdint.hpp>
+#include <asio.hpp>
+#include <asio/system_timer.hpp>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <pion/tcp/connection.hpp>
 
 
@@ -27,7 +27,7 @@ namespace tcp {     // begin namespace tcp
 /// timer: helper class used to time-out TCP connections
 ///
 class PION_API timer
-    : public pion::enable_shared_from_this<timer>
+    : public std::enable_shared_from_this<timer>
 {
 public:
 
@@ -43,10 +43,10 @@ public:
      *
      * @param seconds number of seconds before the timeout triggers
      */
-    void start(const pion::uint32_t seconds);
+    void start(const uint32_t seconds);
 
     /// cancel the timer (operation completed)
-    void cancel(void);
+    void cancel();
 
 
 private:
@@ -56,27 +56,27 @@ private:
      *
      * @param ec timer error status code
      */
-    void timer_callback(const pion::error_code& ec);
+    void timer_callback(const std::error_code& ec);
 
     /// pointer to the TCP connection that is being monitored
     tcp::connection_ptr                     m_conn_ptr;
 
     /// timer used to timeout TCP operations
-    pion::asio::system_timer             m_timer;
-    
+    asio::system_timer             m_timer;
+
     /// mutex used to synchronize the TCP connection timer
-    pion::mutex                            m_mutex;
+    std::mutex                            m_mutex;
 
     /// true if the timer is active
-    bool                                    m_timer_active; 
+    bool                                    m_timer_active;
 
     /// true if the timer was cancelled (operation completed)
-    bool                                    m_was_cancelled;    
+    bool                                    m_was_cancelled;
 };
 
 
 /// shared pointer to a timer object
-typedef pion::shared_ptr<timer>     timer_ptr;
+typedef std::shared_ptr<timer>     timer_ptr;
 
 
 }   // end namespace tcp

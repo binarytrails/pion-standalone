@@ -26,10 +26,10 @@ namespace pion {    // begin namespace pion
         : public virtual std::exception, public virtual pion::exception_base
     {
     public:
-        exception() {}
+        exception() = default;
         exception(const std::string& msg) : m_what_msg(msg) {}
         exception(const char * const msg) : m_what_msg(msg) {}
-        virtual ~exception() throw () {}
+        virtual ~exception() throw () = default;
         virtual const char* what() const throw() {
             if (m_what_msg.empty()) update_what_msg();
             return m_what_msg.c_str();
@@ -47,8 +47,8 @@ namespace pion {    // begin namespace pion
         virtual void update_what_msg() const { set_what_msg(); }
         mutable std::string m_what_msg;
     };
-    
-    
+
+
     /**
      * static method that generates a meaningful diagnostic message from exceptions
      *
@@ -81,32 +81,32 @@ namespace pion {    // begin namespace pion
         return tmp.str();
     }
 
-    
+
     namespace error {    // begin namespace error
 
         //
         // pion error info types
         //
-        
+
         /// generic error message
         typedef pion::error_info<struct errinfo_arg_name_,std::string> errinfo_message;
-        
+
         /// name of an unrecognized configuration argument or option
         typedef pion::error_info<struct errinfo_arg_name_,std::string> errinfo_arg_name;
-        
+
         /// file name/path
         typedef pion::error_info<struct errinfo_file_name_,std::string> errinfo_file_name;
-        
+
         /// directory name/path
         typedef pion::error_info<struct errinfo_dir_name_,std::string> errinfo_dir_name;
-        
+
         /// plugin identifier
         typedef pion::error_info<struct errinfo_plugin_name_,std::string> errinfo_plugin_name;
-        
+
         /// plugin symbol name
         typedef pion::error_info<struct errinfo_dir_name_,std::string> errinfo_symbol_name;
 
-        
+
         //
         // pion exception types
         //
@@ -117,42 +117,42 @@ namespace pion {    // begin namespace pion
                 set_what_msg("bad argument", pion::get_error_info<errinfo_arg_name>(*this));
             }
         };
-        
+
         /// exception thrown if there is an error parsing a configuration file
         class bad_config : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("config parser error", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
-        
+
         /// exception thrown if we failed to open a file
         class open_file : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("unable to open file", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
-        
+
         /// exception thrown if we are unable to open a plugin
         class open_plugin : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("unable to open plugin", pion::get_error_info<errinfo_plugin_name>(*this));
             }
         };
-        
+
         /// exception thrown if we failed to read data from a file
         class read_file : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("unable to read file", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
-        
+
         /// exception thrown if a file is not found
         class file_not_found : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("file not found", pion::get_error_info<errinfo_file_name>(*this));
             }
         };
-        
+
         /// exception thrown if a required directory is not found
         class directory_not_found : public pion::exception {
             virtual void update_what_msg() const {
@@ -166,7 +166,7 @@ namespace pion {    // begin namespace pion
                 set_what_msg("plugin not found", pion::get_error_info<errinfo_plugin_name>(*this));
             }
         };
-        
+
         /// exception thrown if we try to add or load a duplicate plugin
         class duplicate_plugin : public pion::exception {
             virtual void update_what_msg() const {
@@ -180,23 +180,23 @@ namespace pion {    // begin namespace pion
                 set_what_msg("missing plugin symbol", pion::get_error_info<errinfo_symbol_name>(*this));
             }
         };
-      
+
         /// exception thrown if a plugin has an undefined state
         class plugin_undefined : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("plugin has undefined state");
             }
         };
-        
+
         /// exception thrown if a bad password hash is provided
         class bad_password_hash : public pion::exception {
             virtual void update_what_msg() const {
                 set_what_msg("bad password hash");
             }
         };
-    
+
     }   // end namespace error
-    
+
 }   // end namespace pion
 
 #endif

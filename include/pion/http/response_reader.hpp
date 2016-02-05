@@ -11,9 +11,9 @@
 #define __PION_HTTP_RESPONSE_READER_HEADER__
 
 #include <pion/config.hpp>
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_memory.hpp>
+#include <asio.hpp>
+#include <functional>
+#include <memory>
 #include <pion/http/response.hpp>
 #include <pion/http/reader.hpp>
 
@@ -27,19 +27,19 @@ namespace http {    // begin namespace http
 ///
 class response_reader :
     public http::reader,
-    public pion::enable_shared_from_this<response_reader>
+    public std::enable_shared_from_this<response_reader>
 {
 
 public:
 
     /// function called after the HTTP message has been parsed
-    typedef pion::function<void (http::response_ptr, tcp::connection_ptr,
-        const pion::error_code&)>   finished_handler_t;
+    typedef std::function<void (http::response_ptr, tcp::connection_ptr,
+        const std::error_code&)>   finished_handler_t;
 
-    
+
     // default destructor
-    virtual ~response_reader() {}
-    
+    virtual ~response_reader() = default;
+
     /**
      * creates new response_reader objects
      *
@@ -47,18 +47,18 @@ public:
      * @param http_request the request we are responding to
      * @param handler function called after the message has been parsed
      */
-    static inline pion::shared_ptr<response_reader>
+    static inline std::shared_ptr<response_reader>
         create(const tcp::connection_ptr& tcp_conn, const http::request& http_request,
                finished_handler_t handler)
     {
-        return pion::shared_ptr<response_reader>
+        return std::shared_ptr<response_reader>
             (new response_reader(tcp_conn, http_request, handler));
     }
 
     /// sets a function to be called after HTTP headers have been parsed
     inline void set_headers_parsed_callback(finished_handler_t& h) { m_parsed_headers = h; }
 
-    
+
 protected:
 
     /**
@@ -76,31 +76,31 @@ protected:
         m_http_msg->set_remote_ip(tcp_conn->get_remote_ip());
         set_logger(PION_GET_LOGGER("pion.http.response_reader"));
     }
-        
+
     /// Reads more bytes from the TCP connection
-    virtual void read_bytes(void) {
-        get_connection()->async_read_some(pion::bind(&response_reader::consume_bytes,
+    virtual void read_bytes() {
+        get_connection()->async_read_some(std::bind(&response_reader::consume_bytes,
                                                         shared_from_this(),
-                                                        pion::asio::placeholders::error,
-                                                        pion::asio::placeholders::bytes_transferred));
+                                                        std::placeholders::_1,
+                                                        std::placeholders::_2));
     }
 
     /// Called after we have finished parsing the HTTP message headers
-    virtual void finished_parsing_headers(const pion::error_code& ec) {
+    virtual void finished_parsing_headers(const std::error_code& ec) {
         // call the finished headers handler with the HTTP message
         if (m_parsed_headers) m_parsed_headers(m_http_msg, get_connection(), ec);
     }
-    
+
     /// Called after we have finished reading/parsing the HTTP message
-    virtual void finished_reading(const pion::error_code& ec) {
+    virtual void finished_reading(const std::error_code& ec) {
         // call the finished handler with the finished HTTP message
         if (m_finished) m_finished(m_http_msg, get_connection(), ec);
     }
-    
-    /// Returns a reference to the HTTP message being parsed
-    virtual http::message& get_message(void) { return *m_http_msg; }
 
-    
+    /// Returns a reference to the HTTP message being parsed
+    virtual http::message& get_message() { return *m_http_msg; }
+
+
     /// The new HTTP message container being created
     http::response_ptr             m_http_msg;
 
@@ -113,7 +113,7 @@ protected:
 
 
 /// data type for a response_reader pointer
-typedef pion::shared_ptr<response_reader>   response_reader_ptr;
+typedef std::shared_ptr<response_reader>   response_reader_ptr;
 
 
 }   // end namespace http

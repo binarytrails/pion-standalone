@@ -8,8 +8,8 @@
 //
 
 #include <iostream>
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
+#include <asio.hpp>
+#include <functional>
 #include <pion/error.hpp>
 #include <pion/process.hpp>
 #include <pion/tcp/server.hpp>
@@ -22,13 +22,13 @@ using namespace pion;
 class HelloServer : public tcp::server {
 public:
     HelloServer(const unsigned int tcp_port) : tcp::server(tcp_port) {}
-    virtual ~HelloServer() {}
+    virtual ~HelloServer() = default;
     virtual void handle_connection(const tcp::connection_ptr& tcp_conn)
     {
         static const std::string HELLO_MESSAGE("Hello there!\x0D\x0A");
         tcp_conn->set_lifecycle(pion::tcp::connection::LIFECYCLE_CLOSE); // make sure it will get closed
-        tcp_conn->async_write(pion::asio::buffer(HELLO_MESSAGE),
-                              pion::bind(&pion::tcp::connection::finish, tcp_conn));
+        tcp_conn->async_write(asio::buffer(HELLO_MESSAGE),
+                              std::bind(&pion::tcp::connection::finish, tcp_conn));
     }
 };
 
@@ -58,9 +58,9 @@ int main (int argc, char *argv[])
     PION_LOG_SETLEVEL_INFO(main_log);
     PION_LOG_SETLEVEL_INFO(pion_log);
     PION_LOG_CONFIG_BASIC;
-    
+
     try {
-        
+
         // create a new server to handle the Hello TCP protocol
         tcp::server_ptr hello_server(new HelloServer(port));
         hello_server->start();

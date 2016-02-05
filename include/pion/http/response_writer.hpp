@@ -11,9 +11,9 @@
 #define __PION_HTTP_RESPONSE_WRITER_HEADER__
 
 #include <pion/config.hpp>
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_memory.hpp>
+#include <asio.hpp>
+#include <functional>
+#include <memory>
 #include <pion/http/writer.hpp>
 #include <pion/http/request.hpp>
 #include <pion/http/response.hpp>
@@ -25,59 +25,59 @@ namespace http {    // begin namespace http
 
 ///
 /// response_writer: used to asynchronously send HTTP responses
-/// 
+///
 class PION_API response_writer :
     public http::writer,
-    public pion::enable_shared_from_this<response_writer>
+    public std::enable_shared_from_this<response_writer>
 {
 public:
-    
+
     /// default destructor
-    virtual ~response_writer() {}
+    virtual ~response_writer() = default;
 
     /**
      * creates new response_writer objects
-     * 
+     *
      * @param tcp_conn TCP connection used to send the response
      * @param http_response pointer to the response that will be sent
      * @param handler function called after the response has been sent
-     * 
-     * @return pion::shared_ptr<response_writer> shared pointer to
+     *
+     * @return std::shared_ptr<response_writer> shared pointer to
      *         the new writer object that was created
      */
-    static inline pion::shared_ptr<response_writer> create(const tcp::connection_ptr& tcp_conn,
+    static inline std::shared_ptr<response_writer> create(const tcp::connection_ptr& tcp_conn,
                                                             const http::response_ptr& http_response_ptr,
                                                             finished_handler_t handler = finished_handler_t())
     {
-        return pion::shared_ptr<response_writer>(new response_writer(tcp_conn, http_response_ptr, handler));
+        return std::shared_ptr<response_writer>(new response_writer(tcp_conn, http_response_ptr, handler));
     }
 
     /**
      * creates new response_writer objects
-     * 
+     *
      * @param tcp_conn TCP connection used to send the response
      * @param http_request the request we are responding to
      * @param handler function called after the request has been sent
-     * 
-     * @return pion::shared_ptr<response_writer> shared pointer to
+     *
+     * @return std::shared_ptr<response_writer> shared pointer to
      *         the new writer object that was created
      */
-    static inline pion::shared_ptr<response_writer> create(const tcp::connection_ptr& tcp_conn,
+    static inline std::shared_ptr<response_writer> create(const tcp::connection_ptr& tcp_conn,
                                                             const http::request& http_request,
                                                             finished_handler_t handler = finished_handler_t())
     {
-        return pion::shared_ptr<response_writer>(new response_writer(tcp_conn, http_request, handler));
+        return std::shared_ptr<response_writer>(new response_writer(tcp_conn, http_request, handler));
     }
-    
+
     /// returns a non-const reference to the response that will be sent
-    inline http::response& get_response(void) { return *m_http_response; }
-    
-    
+    inline http::response& get_response() { return *m_http_response; }
+
+
 protected:
-    
+
     /**
      * protected constructor restricts creation of objects (use create())
-     * 
+     *
      * @param tcp_conn TCP connection used to send the response
      * @param http_response pointer to the response that will be sent
      * @param handler function called after the request has been sent
@@ -92,16 +92,16 @@ protected:
         // check if we should initialize the payload content using
         // the response's content buffer
         if (m_http_response->get_content_length() > 0
-            && m_http_response->get_content() != NULL
+            && m_http_response->get_content() != nullptr
             && m_http_response->get_content()[0] != '\0')
         {
             write_no_copy(m_http_response->get_content(), m_http_response->get_content_length());
         }
     }
-    
+
     /**
      * protected constructor restricts creation of objects (use create())
-     * 
+     *
      * @param tcp_conn TCP connection used to send the response
      * @param http_request the request we are responding to
      * @param handler function called after the request has been sent
@@ -114,8 +114,8 @@ protected:
         // tell the http::writer base class whether or not the client supports chunks
         supports_chunked_messages(m_http_response->get_chunks_supported());
     }
-    
-    
+
+
     /**
      * initializes a vector of write buffers with the HTTP message information
      *
@@ -127,22 +127,22 @@ protected:
         m_http_response->prepare_buffers_for_send(write_buffers,
                                                get_connection()->get_keep_alive(),
                                                sending_chunked_message());
-    }   
+    }
 
     /// returns a function bound to http::writer::handle_write()
-    virtual write_handler_t bind_to_write_handler(void) {
-        return pion::bind(&response_writer::handle_write, shared_from_this(),
-                           pion::asio::placeholders::error,
-                           pion::asio::placeholders::bytes_transferred);
+    virtual write_handler_t bind_to_write_handler() {
+        return std::bind(&response_writer::handle_write, shared_from_this(),
+                           std::placeholders::_1,
+                           std::placeholders::_2);
     }
 
     /**
      * called after the response is sent
-     * 
+     *
      * @param write_error error status from the last write operation
      * @param bytes_written number of bytes sent by the last write operation
      */
-    virtual void handle_write(const pion::error_code& write_error,
+    virtual void handle_write(const std::error_code& write_error,
                              std::size_t bytes_written)
     {
         (void)bytes_written;
@@ -160,19 +160,19 @@ protected:
         finished_writing(write_error);
     }
 
-    
+
 private:
-    
+
     /// the response that will be sent
     http::response_ptr      m_http_response;
-    
+
     /// the initial HTTP response header line
     std::string             m_response_line;
 };
 
 
 /// data type for a response_writer pointer
-typedef pion::shared_ptr<response_writer>   response_writer_ptr;
+typedef std::shared_ptr<response_writer>   response_writer_ptr;
 
 
 /// override operator<< for convenience

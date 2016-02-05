@@ -22,34 +22,34 @@
 #include <pion/utils/pion_filesystem.hpp>
 
 namespace pion {    // begin namespace pion
-    
-// static members of process
-    
-pion::once_flag                process::m_instance_flag = PION_ONCE_INIT;
-process::config_type *process::m_config_ptr = NULL;
 
-    
+// static members of process
+
+std::once_flag                process::m_instance_flag;
+process::config_type *process::m_config_ptr = nullptr;
+
+
 // process member functions
-    
-void process::shutdown(void)
+
+void process::shutdown()
 {
     config_type& cfg = get_config();
-    pion::unique_lock<pion::mutex> shutdown_lock(cfg.shutdown_mutex);
+    std::unique_lock<std::mutex> shutdown_lock(cfg.shutdown_mutex);
     if (! cfg.shutdown_now) {
         cfg.shutdown_now = true;
         cfg.shutdown_cond.notify_all();
     }
 }
 
-void process::wait_for_shutdown(void)
+void process::wait_for_shutdown()
 {
     config_type& cfg = get_config();
-    pion::unique_lock<pion::mutex> shutdown_lock(cfg.shutdown_mutex);
+    std::unique_lock<std::mutex> shutdown_lock(cfg.shutdown_mutex);
     while (! cfg.shutdown_now)
         cfg.shutdown_cond.wait(shutdown_lock);
 }
 
-void process::create_config(void)
+void process::create_config()
 {
     static config_type UNIQUE_PION_PROCESS_CONFIG;
     m_config_ptr = &UNIQUE_PION_PROCESS_CONFIG;
@@ -86,11 +86,11 @@ void process::set_dumpfile_directory(const std::string& dir)
 
     // load dbghelp.dll
     if (!dir.empty()) {
-        HMODULE hDll = NULL;
+        HMODULE hDll = nullptr;
         TCHAR szDbgHelpPath[_MAX_PATH];
 
         // try loading side-by-side version of DbgHelp.dll first
-        if (GetModuleFileName(NULL, szDbgHelpPath, _MAX_PATH)) {
+        if (GetModuleFileName(nullptr, szDbgHelpPath, _MAX_PATH)) {
             TCHAR *pSlash = _tcsrchr(szDbgHelpPath, _T('\\'));
             if (pSlash) {
                 _tcscpy(pSlash+1, DBGHELP_DLL);
@@ -98,27 +98,27 @@ void process::set_dumpfile_directory(const std::string& dir)
             }
         }
         // if not found, load the default version
-        if (hDll == NULL) {
+        if (hDll == nullptr) {
             hDll = ::LoadLibrary( DBGHELP_DLL );
         }
         cfg.h_dbghelp = hDll;
 
-        if (hDll == NULL) {
+        if (hDll == nullptr) {
             throw dumpfile_init_exception("Failed to load DbgHelp.dll");
         }
     } else {
-        cfg.h_dbghelp = NULL;
+        cfg.h_dbghelp = nullptr;
     }
 
     // get MiniDumpWriteDump proc address
-    if (cfg.h_dbghelp != NULL) {
+    if (cfg.h_dbghelp != nullptr) {
         cfg.p_dump_proc = (MINIDUMPWRITEDUMP)::GetProcAddress(cfg.h_dbghelp, "MiniDumpWriteDump");
 
-        if (cfg.p_dump_proc == NULL) {
+        if (cfg.p_dump_proc == nullptr) {
             throw dumpfile_init_exception("Failed to get MiniDumpWriteDump proc address, probably dbghelp.dll version is too old");
         }
     } else {
-        cfg.p_dump_proc = NULL;
+        cfg.p_dump_proc = nullptr;
     }
 
     pion::logger _logger = PION_GET_LOGGER("pion.process");
@@ -127,7 +127,7 @@ void process::set_dumpfile_directory(const std::string& dir)
         ::SetUnhandledExceptionFilter(process::unhandled_exception_filter);
          PION_LOG_INFO(_logger, "Dump file generation enabled to " << cfg.dumpfile_dir );
     } else {
-        ::SetUnhandledExceptionFilter(NULL);
+        ::SetUnhandledExceptionFilter(nullptr);
         PION_LOG_INFO(_logger, "Unhandled exception handling reset to default");
     }
 }
@@ -158,9 +158,9 @@ LONG WINAPI process::unhandled_exception_filter(struct _EXCEPTION_POINTERS *pExc
 {
     config_type& cfg = get_config();
     pion::logger _logger = PION_GET_LOGGER("pion.process");
-    
+
     // make sure we have all the necessary setup
-    if (cfg.dumpfile_dir.empty() || cfg.p_dump_proc == NULL) {
+    if (cfg.dumpfile_dir.empty() || cfg.p_dump_proc == nullptr) {
         PION_LOG_FATAL(_logger, "Unhandled exception caught when dump file handling not configured!");
         PION_SHUTDOWN_LOGGER;
         return EXCEPTION_CONTINUE_SEARCH;
@@ -170,8 +170,8 @@ LONG WINAPI process::unhandled_exception_filter(struct _EXCEPTION_POINTERS *pExc
     LONG rc = EXCEPTION_CONTINUE_SEARCH;
 
     // create the dump file and, if successful, write it
-    HANDLE hFile = ::CreateFileA(dumpfile_path.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = ::CreateFileA(dumpfile_path.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL, nullptr);
 
     if (hFile!=INVALID_HANDLE_VALUE) {
         _MINIDUMP_EXCEPTION_INFORMATION ExInfo;
@@ -181,19 +181,19 @@ LONG WINAPI process::unhandled_exception_filter(struct _EXCEPTION_POINTERS *pExc
         ExInfo.ClientPointers = 0;
 
         // write the dump
-        BOOL bOK = cfg.p_dump_proc(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, &ExInfo, NULL, NULL );
+        BOOL bOK = cfg.p_dump_proc(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, &ExInfo, nullptr, nullptr );
 
         if (bOK) {
             PION_LOG_INFO(_logger, "Saved process dump file to " << dumpfile_path);
         } else {
-            PION_LOG_ERROR(_logger, "Failed to save dump file to " << dumpfile_path << 
+            PION_LOG_ERROR(_logger, "Failed to save dump file to " << dumpfile_path <<
                 " error code: " << GetLastError());
         }
 
         ::CloseHandle(hFile);
         rc = EXCEPTION_EXECUTE_HANDLER; // dump saved, so we can die peacefully..
     } else {
-        PION_LOG_ERROR(_logger, "Failed to create dump file " << dumpfile_path << 
+        PION_LOG_ERROR(_logger, "Failed to create dump file " << dumpfile_path <<
             " error code: " << GetLastError());
     }
 
@@ -203,12 +203,12 @@ LONG WINAPI process::unhandled_exception_filter(struct _EXCEPTION_POINTERS *pExc
 }
 
 
-void process::initialize(void)
+void process::initialize()
 {
     SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
 }
 
-void process::daemonize(void)
+void process::daemonize()
 {
     // not supported
 }
@@ -220,7 +220,7 @@ void handle_signal(int /* sig */)
     process::shutdown();
 }
 
-void process::initialize(void)
+void process::initialize()
 {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGCHLD, SIG_IGN);
@@ -232,34 +232,34 @@ void process::initialize(void)
     signal(SIGTERM, handle_signal);
 }
 
-void process::daemonize(void)
+void process::daemonize()
 {
     // adopted from "Unix Daemon Server Programming"
     // http://www.enderunix.org/docs/eng/daemon.php
-    
+
     // return early if already running as a daemon
     if(getppid()==1) return;
-    
-    // for out the process 
+
+    // for out the process
     int i = fork();
     if (i<0) exit(1);   // error forking
     if (i>0) exit(0);   // exit if parent
-    
+
     // child (daemon process) continues here after the fork...
-    
+
     // obtain a new process group
     setsid();
-    
+
     // close all descriptors
     for (i=getdtablesize();i>=0;--i) close(i);
-    
+
     // bind stdio to /dev/null (ignore errors)
     i=open("/dev/null",O_RDWR);
     if (i != -1) {
         if (dup(i) == -1) {}
         if (dup(i) == -1) {}
     }
-    
+
     // restrict file creation mode to 0750
     umask(027);
 }

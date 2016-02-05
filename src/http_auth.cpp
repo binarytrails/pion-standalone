@@ -19,7 +19,7 @@ namespace http {    // begin namespace http
 
 void auth::add_restrict(const std::string& resource)
 {
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
     const std::string clean_resource(http::server::strip_trailing_slash(resource));
     m_restrict_list.insert(clean_resource);
     PION_LOG_INFO(m_logger, "Set authentication restrictions for HTTP resource: " << clean_resource);
@@ -27,7 +27,7 @@ void auth::add_restrict(const std::string& resource)
 
 void auth::add_permit(const std::string& resource)
 {
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
     const std::string clean_resource(http::server::strip_trailing_slash(resource));
     m_white_list.insert(clean_resource);
     PION_LOG_INFO(m_logger, "Set authentication permission for HTTP resource: " << clean_resource);
@@ -38,12 +38,12 @@ bool auth::need_authentication(const http::request_ptr& http_request_ptr) const
     // if no users are defined, authentication is never required
     if (m_user_manager->empty())
         return false;
-    
+
     // strip off trailing slash if the request has one
     std::string resource(http::server::strip_trailing_slash(http_request_ptr->get_resource()));
-    
-    pion::unique_lock<pion::mutex> resource_lock(m_resource_mutex);
-    
+
+    std::unique_lock<std::mutex> resource_lock(m_resource_mutex);
+
     // just return false if restricted list is empty
     if (m_restrict_list.empty())
         return false;
@@ -56,7 +56,7 @@ bool auth::need_authentication(const http::request_ptr& http_request_ptr) const
         // return false if found in white list, or true if not found
         return ( ! find_resource(m_white_list, resource) );
     }
-    
+
     // resource not found in restricted list
     return false;
 }
@@ -69,7 +69,7 @@ bool auth::find_resource(const resource_set_type& resource_set,
         --i;
         // check for a match if the first part of the strings match
         if (i->empty() || resource.compare(0, i->size(), *i) == 0) {
-            // only if the resource matches exactly 
+            // only if the resource matches exactly
             // or if resource is followed first with a '/' character
             if (resource.size() == i->size() || resource[i->size()]=='/') {
                 return true;
@@ -79,6 +79,6 @@ bool auth::find_resource(const resource_set_type& resource_set,
     return false;
 }
 
-  
+
 }   // end namespace http
 }   // end namespace pion

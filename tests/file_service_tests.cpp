@@ -40,7 +40,7 @@ PION_DECLARE_PLUGIN(FileService)
 
 
 struct PluginPtrWithFileServiceLoaded_F : public plugin_ptr<http::plugin_service> {
-    PluginPtrWithFileServiceLoaded_F() { 
+    PluginPtrWithFileServiceLoaded_F() {
         plugin::reset_plugin_directories();
 #ifndef PION_STATIC_LINKING
         plugin::add_plugin_directory(PATH_TO_PLUGINS);
@@ -108,9 +108,9 @@ public:
         m_scheduler.shutdown();
         boost::filesystem::remove_all("sandbox");
     }
-    
-    inline boost::asio::io_service& get_io_service(void) { return m_scheduler.get_io_service(); }
-    
+
+    inline boost::asio::io_service& get_io_service() { return m_scheduler.get_io_service(); }
+
     single_service_scheduler	m_scheduler;
 	http::plugin_server			m_server;
 };
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(checkSetServiceOptionWithInvalidOptionNameThrows) {
     BOOST_CHECK_THROW(m_server.set_service_option("/resource1", "NotAnOption", "value1"), error::bad_arg);
 }
 
-BOOST_AUTO_TEST_SUITE_END() 
+BOOST_AUTO_TEST_SUITE_END()
 
 class RunningFileService_F : public NewlyLoadedFileService_F {
 public:
@@ -175,7 +175,7 @@ public:
     }
     ~RunningFileService_F() {
     }
-    
+
     /**
      * sends a request to the local HTTP server
      *
@@ -193,7 +193,7 @@ public:
 
         checkResponseHead(expected_response_code);
     }
-    
+
     /**
      * check status line and headers of response
      *
@@ -245,7 +245,7 @@ public:
 
         // TODO: Any headers that are always required for specific status-codes should be checked here.
     }
-    
+
     inline void sendRequestWithContent(const std::string& request_method,
                                        const std::string& resource,
                                        const std::string& content)
@@ -255,7 +255,7 @@ public:
         m_http_stream << "Content-Length: " << content.size() << http::types::STRING_CRLF << http::types::STRING_CRLF << content;
         m_http_stream.flush();
     }
-    
+
     /**
      * checks response content validity for the local HTTP server
      *
@@ -269,11 +269,11 @@ public:
         boost::scoped_array<char> content_buf(new char[m_content_length + 1]);
         BOOST_CHECK(m_http_stream.read(content_buf.get(), m_content_length));
         content_buf[m_content_length] = '\0';
-        
+
         // check the response content
         BOOST_CHECK(boost::regex_match(content_buf.get(), content_regex));
     }
-    
+
     unsigned long m_content_length;
     boost::asio::ip::tcp::iostream m_http_stream;
     std::map<std::string, std::string> m_response_headers;
@@ -497,7 +497,7 @@ BOOST_AUTO_TEST_CASE(checkResponseToPutRequestForFileInNonexistentDirectory) {
 /* TODO: write tests for POST and PUT with a file that's not in the configured directory.
 */
 
-/* TODO: write a test with a PUT request with no content and check that it throws an 
+/* TODO: write a test with a PUT request with no content and check that it throws an
    appropriate exception.  Currently it crashes.
 */
 
@@ -541,11 +541,11 @@ BOOST_AUTO_TEST_CASE(checkResponseToChunkedPutRequest) {
     m_http_stream << http::types::HEADER_TRANSFER_ENCODING << ": chunked" << http::types::STRING_CRLF << http::types::STRING_CRLF;
     // write first chunk size
     m_http_stream << "A" << http::types::STRING_CRLF;
-    // write first chunk 
+    // write first chunk
     m_http_stream << "abcdefghij" << http::types::STRING_CRLF;
     // write second chunk size
     m_http_stream << "5" << http::types::STRING_CRLF;
-    // write second chunk 
+    // write second chunk
     m_http_stream << "klmno" << http::types::STRING_CRLF;
     // write final chunk size
     m_http_stream << "0" << http::types::STRING_CRLF;
@@ -561,11 +561,11 @@ BOOST_AUTO_TEST_CASE(checkResponseToChunkedPostRequest) {
     m_http_stream << http::types::HEADER_TRANSFER_ENCODING << ": chunked" << http::types::STRING_CRLF << http::types::STRING_CRLF;
     // write first chunk size
     m_http_stream << "A" << http::types::STRING_CRLF;
-    // write first chunk 
+    // write first chunk
     m_http_stream << "abcdefghij" << http::types::STRING_CRLF;
     // write second chunk size
     m_http_stream << "5" << http::types::STRING_CRLF;
-    // write second chunk 
+    // write second chunk
     m_http_stream << "klmno" << http::types::STRING_CRLF;
     // write final chunk size
     m_http_stream << "0" << http::types::STRING_CRLF;
@@ -636,7 +636,7 @@ BOOST_AUTO_TEST_CASE(checkResponseToHTTP_1_1_Request) {
     unsigned int chunk_size_2 = 0;
     m_http_stream >> std::hex >> chunk_size_2;
     BOOST_CHECK_EQUAL(chunk_size_2, m_file4_len - static_cast<unsigned int>(MAX_CHUNK_SIZE));
-    
+
     // expect CRLF following chunk size
     BOOST_CHECK(m_http_stream.read(two_bytes, 2));
     BOOST_CHECK(strncmp(two_bytes, http::types::STRING_CRLF.c_str(), 2) == 0);
@@ -682,7 +682,7 @@ BOOST_AUTO_TEST_CASE(checkHTTPMessageReceive) {
     http_response.receive(tcp_conn, error_code);
     BOOST_REQUIRE(!error_code);
 
-    // verify that the headers are as expected for a chunked response 
+    // verify that the headers are as expected for a chunked response
     BOOST_CHECK_EQUAL(http_response.get_header(http::types::HEADER_TRANSFER_ENCODING), "chunked");
     BOOST_CHECK_EQUAL(http_response.get_header(http::types::HEADER_CONTENT_LENGTH), "");
 

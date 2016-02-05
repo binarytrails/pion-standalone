@@ -10,9 +10,9 @@
 #ifndef __PION_FILESERVICE_HEADER__
 #define __PION_FILESERVICE_HEADER__
 
-#include <pion/utils/pion_memory.hpp>
+#include <memory>
 #include <pion/utils/pion_filesystem.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <mutex>
 #include <pion/config.hpp>
 #include <pion/logger.hpp>
 #include <pion/hash_map.hpp>
@@ -28,9 +28,8 @@
 namespace pion {        // begin namespace pion
 namespace plugins {     // begin namespace plugins
 
-class char_array_owner : pion::noncopyable
+struct char_array_owner
 {
-	public:
 		char_array_owner( char *p ) : ptr( p ){}
 		~char_array_owner() { delete [] ptr; }
 
@@ -39,11 +38,11 @@ class char_array_owner : pion::noncopyable
 
 ///
 /// DiskFile: class used to represent files stored on disk
-/// 
+///
 class DiskFile {
 public:
     /// default constructor
-    DiskFile(void)
+    DiskFile()
         : m_file_size(0), m_last_modified(0) {}
 
     /// used to construct new disk file objects
@@ -62,38 +61,38 @@ public:
     {}
 
     /// updates the file_size and last_modified timestamp to disk
-    void update(void);
+    void update();
 
     /// reads content from disk into file_content buffer (may throw)
-    void read(void);
+    void read();
 
     /**
      * checks if the file has been updated and updates vars if it has (may throw)
      *
      * @return true if the file was updated
      */
-    bool checkUpdated(void);
+    bool checkUpdated();
 
     /// return path to the cached file
-    inline const pion::filesystem::path& getFilePath(void) const { return m_file_path; }
+    inline const pion::filesystem::path& getFilePath() const { return m_file_path; }
 
     /// returns content of the cached file
-    inline char *getFileContent(void) { return m_file_content.get()->ptr; }
+    inline char *getFileContent() { return m_file_content.get()->ptr; }
 
     /// returns true if there is cached file content
-    inline bool hasFileContent(void) const { return static_cast<bool>(m_file_content); }
+    inline bool hasFileContent() const { return static_cast<bool>(m_file_content); }
 
     /// returns size of the file's content
-    inline unsigned long getFileSize(void) const { return m_file_size; }
+    inline unsigned long getFileSize() const { return m_file_size; }
 
     /// returns timestamp that the cached file was last modified (0 = cache disabled)
-    inline std::time_t getLastModified(void) const { return m_last_modified; }
+    inline std::time_t getLastModified() const { return m_last_modified; }
 
     /// returns timestamp that the cached file was last modified (string format)
-    inline const std::string& getLastModifiedString(void) const { return m_last_modified_string; }
+    inline const std::string& getLastModifiedString() const { return m_last_modified_string; }
 
     /// returns mime type for the cached file
-    inline const std::string& getMimeType(void) const { return m_mime_type; }
+    inline const std::string& getMimeType() const { return m_mime_type; }
 
     /// sets the path to the cached file
     inline void setFilePath(const pion::filesystem::path& p) { m_file_path = p; }
@@ -135,12 +134,13 @@ protected:
 
 ///
 /// DiskFileSender: class used to send files to clients using HTTP responses
-/// 
-class DiskFileSender : 
-    public pion::enable_shared_from_this<DiskFileSender>,
-    private pion::noncopyable
+///
+class DiskFileSender :
+    public std::enable_shared_from_this<DiskFileSender>
 {
 public:
+	DiskFileSender( const DiskFileSender & ) = delete;
+
     /**
      * creates new DiskFileSender objects
      *
@@ -149,36 +149,36 @@ public:
      * @param tcp_conn TCP connection used to send the file
      * @param max_chunk_size sets the maximum chunk size (default=0, unlimited)
      */
-    static inline pion::shared_ptr<DiskFileSender>
+    static inline std::shared_ptr<DiskFileSender>
         create(DiskFile& file,
                const pion::http::request_ptr& http_request_ptr,
                const pion::tcp::connection_ptr& tcp_conn,
-               unsigned long max_chunk_size = 0) 
+               unsigned long max_chunk_size = 0)
     {
-        return pion::shared_ptr<DiskFileSender>(new DiskFileSender(file, http_request_ptr,
+        return std::shared_ptr<DiskFileSender>(new DiskFileSender(file, http_request_ptr,
                                                                     tcp_conn, max_chunk_size));
     }
 
-    /// default virtual destructor 
-    virtual ~DiskFileSender() {}
+    /// default virtual destructor
+    virtual ~DiskFileSender() = default;
 
     /// Begins sending the file to the client.  Following a call to this
     /// function, it is not thread safe to use your reference to the
     /// DiskFileSender object.
-    void send(void);
+    void send();
 
     /// sets the logger to be used
     inline void set_logger(logger log_ptr) { m_logger = log_ptr; }
 
     /// returns the logger currently in use
-    inline logger get_logger(void) { return m_logger; }
+    inline logger get_logger() { return m_logger; }
 
 
 protected:
 
     /**
      * protected constructor restricts creation of objects (use create())
-     * 
+     *
      * @param file disk file object that should be sent
      * @param http_request_ptr HTTP request that we are responding to
      * @param tcp_conn TCP connection used to send the file
@@ -195,7 +195,7 @@ protected:
      * @param write_error error status from the last write operation
      * @param bytes_written number of bytes sent by the last write operation
      */
-    void handle_write(const pion::error_code& write_error,
+    void handle_write(const std::error_code& write_error,
                      std::size_t bytes_written);
 
 
@@ -215,7 +215,7 @@ private:
     std::ifstream             m_file_stream;
 
     /// buffer used to send file content
-    pion::shared_ptr<char_array_owner>               m_content_buf;
+    std::unique_ptr<char []>               m_content_buf;
 
     /**
      * maximum chunk size (in bytes): files larger than this size will be
@@ -232,20 +232,20 @@ private:
 };
 
 /// data type for a DiskFileSender pointer
-typedef pion::shared_ptr<DiskFileSender>       DiskFileSenderPtr;
+typedef std::shared_ptr<DiskFileSender>       DiskFileSenderPtr;
 
 
 ///
 /// FileService: web service that serves regular files
-/// 
+///
 class FileService :
     public pion::http::plugin_service
 {
 public:
 
     // default constructor and destructor
-    FileService(void);
-    virtual ~FileService() {}
+    FileService();
+    virtual ~FileService() = default;
 
     /**
      * configuration options supported by FileService:
@@ -264,25 +264,25 @@ public:
                             const pion::tcp::connection_ptr& tcp_conn);
 
     /// called when the web service's server is starting
-    virtual void start(void);
+    virtual void start();
 
     /// called when the web service's server is stopping
-    virtual void stop(void);
+    virtual void stop();
 
     /// sets the logger to be used
     inline void set_logger(logger log_ptr) { m_logger = log_ptr; }
 
     /// returns the logger currently in use
-    inline logger get_logger(void) { return m_logger; }
+    inline logger get_logger() { return m_logger; }
 
 
 protected:
 
     /// data type for map of file names to cache entries
-    typedef PION_HASH_MAP<std::string, DiskFile, PION_HASH_STRING >     CacheMap;
+    typedef PION_HASH_MAP<std::string, DiskFile>     CacheMap;
 
     /// data type for map of file extensions to MIME types
-    typedef PION_HASH_MAP<std::string, std::string, PION_HASH_STRING >  MIMETypeMap;
+    typedef PION_HASH_MAP<std::string, std::string>  MIMETypeMap;
 
     /**
      * adds all files within a directory to the cache
@@ -324,7 +324,7 @@ protected:
 private:
 
     /// function called once to initialize the map of MIME types
-    static void createMIMETypes(void);
+    static void createMIMETypes();
 
 
     /// mime type used if no others are found for the file's extension
@@ -343,7 +343,7 @@ private:
     static const unsigned long  DEFAULT_MAX_CHUNK_SIZE;
 
     /// flag used to make sure that createMIMETypes() is called only once
-    static pion::once_flag     m_mime_types_init_flag;
+    static std::once_flag     m_mime_types_init_flag;
 
     /// map of file extensions to MIME types
     static MIMETypeMap *        m_mime_types_ptr;
@@ -359,7 +359,7 @@ private:
     CacheMap                    m_cache_map;
 
     /// mutex used to make the file cache thread-safe
-    pion::mutex                m_cache_mutex;
+    std::mutex                m_cache_mutex;
 
     /**
      * cache configuration setting:

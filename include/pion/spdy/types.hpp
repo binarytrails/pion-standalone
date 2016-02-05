@@ -12,15 +12,14 @@
 
 #include <pion/config.hpp>
 #include <map>
-#include <pion/utils/pion_stdint.hpp>
 
 
 namespace pion {    // begin namespace pion
-namespace spdy {    // begin namespace spdy 
+namespace spdy {    // begin namespace spdy
 
-    
+
 #define MIN_SPDY_VERSION            3
-    
+
 // The types of SPDY frames
 #define SPDY_DATA                   0
 #define SPDY_SYN_STREAM             1
@@ -33,12 +32,12 @@ namespace spdy {    // begin namespace spdy
 #define SPDY_WINDOW_UPDATE          9
 #define SPDY_CREDENTIAL             10
 #define SPDY_INVALID                11
-    
+
 #define SPDY_FLAG_FIN               0x01
 #define SPDY_FLAG_UNIDIRECTIONAL    0x02
-    
+
 #define SIZE_OF_BYTE                8
-    
+
 #define NON_SPDY                    0
 #define HTTP_REQUEST                1
 #define HTTP_RESPONSE               2
@@ -48,42 +47,42 @@ namespace spdy {    // begin namespace spdy
 /// This structure will be tied to each SPDY frame
 typedef struct spdy_control_frame_info{
     bool control_bit;
-    pion::uint16_t  version;
-    pion::uint16_t  type;
-    pion::uint8_t   flags;
-    pion::uint32_t  length;  // Actually only 24 bits.
+    uint16_t  version;
+    uint16_t  type;
+    uint8_t   flags;
+    uint32_t  length;  // Actually only 24 bits.
 } spdy_control_frame_info;
 
-    
+
 /// This structure will be tied to each SPDY header frame.
 /// Only applies to frames containing headers: SYN_STREAM, SYN_REPLY, HEADERS
 /// Note that there may be multiple SPDY frames in one packet.
 typedef struct _spdy_header_info{
-    pion::uint32_t stream_id;
-    pion::uint8_t *header_block;
-    pion::uint8_t  header_block_len;
-    pion::uint16_t frame_type;
+    uint32_t stream_id;
+    uint8_t *header_block;
+    uint8_t  header_block_len;
+    uint16_t frame_type;
 } spdy_header_info;
 
 
 /// This structure contains the HTTP Protocol information
 typedef struct _http_protocol_info_t{
     std::map<std::string, std::string> http_headers;
-    pion::uint32_t     http_type;
-    pion::uint32_t     stream_id;
-    pion::uint32_t     data_offset;
-    pion::uint32_t     data_size;
+    uint32_t     http_type;
+    uint32_t     stream_id;
+    uint32_t     data_offset;
+    uint32_t     data_size;
     bool                last_chunk;
-    
+
     _http_protocol_info_t()
     : http_type(NON_SPDY),
     stream_id(0),
     data_offset(0),
     data_size(0),
     last_chunk(false){}
-    
+
 } http_protocol_info;
-    
+
 enum spdy_frame_type{
     spdy_data_frame = 1,
     spdy_control_frame = 2,

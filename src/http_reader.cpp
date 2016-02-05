@@ -7,7 +7,7 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <pion/utils/pion_asio.hpp>
+#include <asio.hpp>
 #include <pion/utils/pion_tribool.hpp>
 #include <pion/http/reader.hpp>
 #include <pion/http/request.hpp>
@@ -18,13 +18,13 @@ namespace http {    // begin namespace http
 
 
 // reader static members
-    
-const pion::uint32_t       reader::DEFAULT_READ_TIMEOUT = 10;
+
+const uint32_t       reader::DEFAULT_READ_TIMEOUT = 10;
 
 
 // reader member functions
 
-void reader::receive(void)
+void reader::receive()
 {
     if (m_tcp_conn->get_pipelined()) {
         // there are pipelined messages available in the connection's read buffer
@@ -38,7 +38,7 @@ void reader::receive(void)
     }
 }
 
-void reader::consume_bytes(const pion::error_code& read_error,
+void reader::consume_bytes(const std::error_code& read_error,
                               std::size_t bytes_read)
 {
     // cancel read timer if operation didn't time-out
@@ -52,7 +52,7 @@ void reader::consume_bytes(const pion::error_code& read_error,
         handle_read_error(read_error);
         return;
     }
-    
+
     PION_LOG_DEBUG(m_logger, "Read " << bytes_read << " bytes from HTTP "
                    << (is_parsing_request() ? "request" : "response"));
 
@@ -63,7 +63,7 @@ void reader::consume_bytes(const pion::error_code& read_error,
 }
 
 
-void reader::consume_bytes(void)
+void reader::consume_bytes()
 {
     // parse the bytes read from the last operation
     //
@@ -73,9 +73,9 @@ void reader::consume_bytes(void)
     // true: finished successfully parsing the message
     // indeterminate: parsed bytes, but the message is not yet finished
     //
-    pion::error_code ec;
+    std::error_code ec;
     pion::tribool result = parse(get_message(), ec);
-    
+
     if (gcount() > 0) {
         // parsed > 0 bytes in HTTP headers
         PION_LOG_DEBUG(m_logger, "Parsed " << gcount() << " HTTP bytes");
@@ -120,7 +120,7 @@ void reader::consume_bytes(void)
     }
 }
 
-void reader::read_bytes_with_timeout(void)
+void reader::read_bytes_with_timeout()
 {
     if (m_read_timeout > 0) {
         m_timer_ptr.reset(new tcp::timer(m_tcp_conn));
@@ -131,21 +131,21 @@ void reader::read_bytes_with_timeout(void)
     read_bytes();
 }
 
-void reader::handle_read_error(const pion::error_code& read_error)
+void reader::handle_read_error(const std::error_code& read_error)
 {
     // close the connection, forcing the client to establish a new one
     m_tcp_conn->set_lifecycle(tcp::connection::LIFECYCLE_CLOSE);   // make sure it will get closed
 
     // check if this is just a message with unknown content length
     if (! check_premature_eof(get_message())) {
-        pion::error_code ec;   // clear error code
+        std::error_code ec;   // clear error code
         finished_reading(ec);
         return;
     }
-    
+
     // only log errors if the parsing has already begun
     if (get_total_bytes_read() > 0) {
-        if (read_error == pion::asio::error::operation_aborted) {
+        if (read_error == asio::error::operation_aborted) {
             // if the operation was aborted, the acceptor was stopped,
             // which means another thread is shutting-down the server
             PION_LOG_INFO(m_logger, "HTTP " << (is_parsing_request() ? "request" : "response")

@@ -27,7 +27,7 @@ void plugin_server::add_service(const std::string& resource, http::plugin_servic
     const std::string clean_resource(strip_trailing_slash(resource));
     service_ptr->set_resource(clean_resource);
     m_services.add(clean_resource, service_ptr);
-    http::server::add_resource(clean_resource, pion::ref(*service_ptr));
+    http::server::add_resource(clean_resource, std::ref(*service_ptr));
     PION_LOG_INFO(m_logger, "Loaded static web service for resource (" << clean_resource << ")");
 }
 
@@ -36,7 +36,7 @@ void plugin_server::load_service(const std::string& resource, const std::string&
     const std::string clean_resource(strip_trailing_slash(resource));
     http::plugin_service *service_ptr;
     service_ptr = m_services.load(clean_resource, service_name);
-    http::server::add_resource(clean_resource, pion::ref(*service_ptr));
+    http::server::add_resource(clean_resource, std::ref(*service_ptr));
     service_ptr->set_resource(clean_resource);
     PION_LOG_INFO(m_logger, "Loaded web service plug-in for resource (" << clean_resource << "): " << service_name);
 }
@@ -45,7 +45,7 @@ void plugin_server::set_service_option(const std::string& resource,
                                  const std::string& name, const std::string& value)
 {
     const std::string clean_resource(strip_trailing_slash(resource));
-    m_services.run(clean_resource, pion::bind(&http::plugin_service::set_option, pion::placeholders::_1, name, value));
+    m_services.run(clean_resource, std::bind(&http::plugin_service::set_option, std::placeholders::_1, name, value));
     PION_LOG_INFO(m_logger, "Set web service option for resource ("
                   << resource << "): " << name << '=' << value);
 }
@@ -55,13 +55,13 @@ void plugin_server::load_service_config(const std::string& config_name)
     std::string config_file;
     if (! plugin::find_config_file(config_file, config_name))
         PION_THROW_EXCEPTION( error::file_not_found() << error::errinfo_file_name(config_name) );
-    
+
     // open the file for reading
     std::ifstream config_stream;
     config_stream.open(config_file.c_str(), std::ios::in);
     if (! config_stream.is_open())
         PION_THROW_EXCEPTION( error::open_file() << error::errinfo_file_name(config_name) );
-    
+
     // parse the contents of the file
     http::auth_ptr my_auth_ptr;
     enum ParseState {
@@ -74,7 +74,7 @@ void plugin_server::load_service_config(const std::string& config_name)
     std::string option_name_string;
     std::string option_value_string;
     int c = config_stream.get();    // read the first character
-    
+
     while (config_stream) {
         switch(parse_state) {
         case PARSE_NEWLINE:
@@ -91,7 +91,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 PION_THROW_EXCEPTION( error::bad_config() << error::errinfo_file_name(config_name) );
             }
             break;
-            
+
         case PARSE_COMMAND:
             // parsing command portion (or beginning of line)
             if (c == ' ' || c == '\t') {
@@ -134,7 +134,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 resource_string += c;
             }
             break;
-        
+
         case PARSE_USERNAME:
             // parsing username for user command
             if (c == ' ' || c == '\t') {
@@ -152,7 +152,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 username_string += c;
             }
             break;
-        
+
         case PARSE_VALUE:
             // parsing value portion
             if (c == '\r' || c == '\n') {
@@ -221,7 +221,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 value_string += c;
             }
             break;
-        
+
         case PARSE_COMMENT:
             // skipping comment line
             if (c == '\r' || c == '\n')
@@ -232,7 +232,7 @@ void plugin_server::load_service_config(const std::string& config_name)
         // read the next character
         c = config_stream.get();
     }
-    
+
     // update authentication configuration for the server
     set_authentication(my_auth_ptr);
 }

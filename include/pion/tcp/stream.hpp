@@ -14,26 +14,26 @@
 #include <cstring>
 #include <istream>
 #include <streambuf>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_mutex.hpp>
-#include <pion/utils/pion_condition_variable.hpp>
+#include <functional>
+#include <mutex>
+#include <condition_variable>
 #include <pion/tcp/connection.hpp>
 
 
 namespace pion {    // begin namespace pion
 namespace tcp {     // begin namespace tcp
 
-    
+
 ///
 /// stream_buffer: std::basic_streambuf wrapper for TCP network connections.
 ///                  Based in part on section 13.13.3 of "The Standard C++ Library"
 ///                  by Nicolai M. Josuttis, published in 1999 by Addison-Wesley
-/// 
+///
 class stream_buffer
     : public std::basic_streambuf<char, std::char_traits<char> >
 {
 public:
-    
+
     // data type definitions required for iostream compatability
     typedef char                                char_type;
     typedef std::char_traits<char>::int_type    int_type;
@@ -46,8 +46,8 @@ public:
         PUT_BACK_MAX = 10,  //< number of bytes that can be put back into the read buffer
         WRITE_BUFFER_SIZE = 8192    //< size of the write buffer
     };
-    
-    
+
+
     /**
      * constructs a TCP stream buffer object for an existing TCP connection
      *
@@ -63,65 +63,65 @@ public:
      * constructs a TCP stream buffer object for a new TCP connection
      *
      * @param io_service asio service associated with the connection
-     * @param ssl_flag if true then the connection will be encrypted using SSL 
+     * @param ssl_flag if true then the connection will be encrypted using SSL
      */
-    explicit stream_buffer(pion::asio::io_service& io_service,
+    explicit stream_buffer(asio::io_service& io_service,
                              const bool ssl_flag = false)
         : m_conn_ptr(new connection(io_service, ssl_flag)),
         m_read_buf(m_conn_ptr->get_read_buffer().c_array())
     {
         setup_buffers();
     }
-    
+
     /**
      * constructs a TCP stream buffer object for a new SSL/TCP connection
      *
      * @param io_service asio service associated with the connection
      * @param ssl_context asio ssl context associated with the connection
      */
-    stream_buffer(pion::asio::io_service& io_service,
+    stream_buffer(asio::io_service& io_service,
                     connection::ssl_context_type& ssl_context)
         : m_conn_ptr(new connection(io_service, ssl_context)),
         m_read_buf(m_conn_ptr->get_read_buffer().c_array())
     {
         setup_buffers();
     }
-    
+
     /// virtual destructor flushes the write buffer
     virtual ~stream_buffer() { sync(); }
 
     /// returns a reference to the current TCP connection
-    connection& get_connection(void) { return *m_conn_ptr; }
+    connection& get_connection() { return *m_conn_ptr; }
 
     /// returns a const reference to the current TCP connection
-    const connection& get_connection(void) const { return *m_conn_ptr; }
-    
-    
+    const connection& get_connection() const { return *m_conn_ptr; }
+
+
 protected:
 
     /// sets up the read and write buffers for input and output
-    inline void setup_buffers(void) {
+    inline void setup_buffers() {
         // use the TCP connection's read buffer and allow for bytes to be put back
         setg(m_read_buf+PUT_BACK_MAX, m_read_buf+PUT_BACK_MAX, m_read_buf+PUT_BACK_MAX);
         // set write buffer size-1 so that we have an extra char avail for overflow
         setp(m_write_buf, m_write_buf+(WRITE_BUFFER_SIZE-1));
     }
-    
+
     /**
      * writes data in the output buffer to the TCP connection
      *
      * @return int_type the number of bytes sent, or eof() if there was an error
      */
-    inline int_type flush_output(void) {
+    inline int_type flush_output() {
         const std::streamsize bytes_to_send = std::streamsize(pptr() - pbase());
         int_type bytes_sent = 0;
         if (bytes_to_send > 0) {
-            pion::unique_lock<pion::mutex> async_lock(m_async_mutex);
+            std::unique_lock<std::mutex> async_lock(m_async_mutex);
             m_bytes_transferred = 0;
-            m_conn_ptr->async_write(pion::asio::buffer(pbase(), bytes_to_send),
-                                    pion::bind(&stream_buffer::operation_finished, this,
-                                                pion::asio::placeholders::error,
-                                                pion::asio::placeholders::bytes_transferred));
+            m_conn_ptr->async_write(asio::buffer(pbase(), bytes_to_send),
+                                    std::bind(&stream_buffer::operation_finished, this,
+                                                std::placeholders::_1,
+                                                std::placeholders::_2));
             m_async_done.wait(async_lock);
             bytes_sent = m_bytes_transferred;
             pbump(-bytes_sent);
@@ -130,45 +130,45 @@ protected:
         }
         return bytes_sent;
     }
-    
+
     /**
      * this function is called when the read buffer has no more characters available
      *
      * @return int_type the next character available for reading, or eof() if there was an error
      */
-    virtual int_type underflow(void) {
+    virtual int_type underflow() {
         // first check if we still have bytes available in the read buffer
         if (gptr() < egptr())
             return traits_type::to_int_type(*gptr());
-        
+
         // calculate the number of bytes we will allow to be put back
         std::streamsize put_back_num = std::streamsize(gptr() - eback());
         if (put_back_num > PUT_BACK_MAX)
             put_back_num = PUT_BACK_MAX;
-        
+
         // copy the last bytes read to the beginning of the buffer (for put back)
         if (put_back_num > 0)
             memmove(m_read_buf+(PUT_BACK_MAX-put_back_num), gptr()-put_back_num, put_back_num);
-        
+
         // read data from the TCP connection
         // note that this has to be an ansynchronous call; otherwise, it cannot
         // be cancelled by other threads and will block forever (such as during shutdown)
-        pion::unique_lock<pion::mutex> async_lock(m_async_mutex);
+        std::unique_lock<std::mutex> async_lock(m_async_mutex);
         m_bytes_transferred = 0;
-        m_conn_ptr->async_read_some(pion::asio::buffer(m_read_buf+PUT_BACK_MAX,
+        m_conn_ptr->async_read_some(asio::buffer(m_read_buf+PUT_BACK_MAX,
                                                         connection::READ_BUFFER_SIZE-PUT_BACK_MAX),
-                                    pion::bind(&stream_buffer::operation_finished, this,
-                                                pion::asio::placeholders::error,
-                                                pion::asio::placeholders::bytes_transferred));
+                                    std::bind(&stream_buffer::operation_finished, this,
+                                                std::placeholders::_1,
+                                                std::placeholders::_2));
         m_async_done.wait(async_lock);
         if (m_async_error)
             return traits_type::eof();
-        
+
         // reset buffer pointers now that data is available
         setg(m_read_buf+(PUT_BACK_MAX-put_back_num),            //< beginning of putback bytes
              m_read_buf+PUT_BACK_MAX,                           //< read position
              m_read_buf+PUT_BACK_MAX+m_bytes_transferred);      //< end of buffer
-        
+
         // return next character available
         return traits_type::to_int_type(*gptr());
     }
@@ -216,18 +216,18 @@ protected:
                 pbump(bytes_available);
             }
             // flush data in the write buffer by sending it to the TCP connection
-            if (flush_output() == traits_type::eof()) 
+            if (flush_output() == traits_type::eof())
                 return 0;
             if ((n-bytes_available) >= (WRITE_BUFFER_SIZE-1)) {
                 // the remaining data to send is larger than the buffer available
                 // send it all now rather than buffering
-                pion::unique_lock<pion::mutex> async_lock(m_async_mutex);
+                std::unique_lock<std::mutex> async_lock(m_async_mutex);
                 m_bytes_transferred = 0;
-                m_conn_ptr->async_write(pion::asio::buffer(s+bytes_available,
+                m_conn_ptr->async_write(asio::buffer(s+bytes_available,
                                                             n-bytes_available),
-                                        pion::bind(&stream_buffer::operation_finished, this,
-                                                    pion::asio::placeholders::error,
-                                                    pion::asio::placeholders::bytes_transferred));
+                                        std::bind(&stream_buffer::operation_finished, this,
+                                                    std::placeholders::_1,
+                                                    std::placeholders::_2));
                 m_async_done.wait(async_lock);
                 bytes_sent = bytes_available + m_bytes_transferred;
             } else {
@@ -240,7 +240,7 @@ protected:
         }
         return bytes_sent;
     }
-    
+
     /**
      * reads a sequence of characters
      *
@@ -269,57 +269,57 @@ protected:
             }
         }
         return(n-bytes_remaining);
-    }           
-        
+    }
+
     /**
      * synchronize buffers with the TCP connection
      *
      * @return 0 if successful, -1 if there was an error
      */
-    virtual int_type sync(void) {
+    virtual int_type sync() {
         return ((flush_output() == traits_type::eof()) ? -1 : 0);
     }
-    
-    
+
+
 private:
-    
+
     /// function called after an asynchronous operation has completed
-    inline void operation_finished(const pion::error_code& error_code,
+    inline void operation_finished(const std::error_code& error_code,
                                   std::size_t bytes_transferred)
     {
-        pion::unique_lock<pion::mutex> async_lock(m_async_mutex);
+        std::unique_lock<std::mutex> async_lock(m_async_mutex);
         m_async_error = error_code;
         m_bytes_transferred = bytes_transferred;
         m_async_done.notify_one();
     }
-    
-    
+
+
     /// pointer to the underlying TCP connection used for reading & writing
     tcp::connection_ptr         m_conn_ptr;
-    
+
     /// condition signaled whenever an asynchronous operation has completed
-    pion::mutex                m_async_mutex;
-    
+    std::mutex                m_async_mutex;
+
     /// condition signaled whenever an asynchronous operation has completed
-    pion::condition_variable            m_async_done;
-    
+    std::condition_variable            m_async_done;
+
     /// used to keep track of the result from the last asynchronous operation
-    pion::error_code   m_async_error;
-    
+    std::error_code   m_async_error;
+
     /// the number of bytes transferred by the last asynchronous operation
     std::size_t                 m_bytes_transferred;
-    
+
     /// pointer to the start of the TCP connection's read buffer
     char_type *                 m_read_buf;
-             
+
     /// buffer used to write output
     char_type                   m_write_buf[WRITE_BUFFER_SIZE];
 };
-    
-    
+
+
 ///
 /// stream: std::basic_iostream wrapper for TCP network connections
-/// 
+///
 class stream
     : public std::basic_iostream<char, std::char_traits<char> >
 {
@@ -331,7 +331,7 @@ public:
     typedef std::char_traits<char>::off_type    off_type;
     typedef std::char_traits<char>::pos_type    pos_type;
     typedef std::char_traits<char>              traits_type;
-    
+
 
     /**
      * constructs a TCP stream object for an existing TCP connection
@@ -339,51 +339,51 @@ public:
      * @param conn_ptr pointer to the TCP connection to use for reading & writing
      */
     explicit stream(const tcp::connection_ptr& conn_ptr)
-        : std::basic_iostream<char, std::char_traits<char> >(NULL), m_tcp_buf(conn_ptr)
+        : std::basic_iostream<char, std::char_traits<char> >(nullptr), m_tcp_buf(conn_ptr)
     {
         // initialize basic_iostream with pointer to the stream buffer
         std::basic_ios<char,std::char_traits<char> >::init(&m_tcp_buf);
     }
-    
+
     /**
      * constructs a TCP stream object for a new TCP connection
      *
      * @param io_service asio service associated with the connection
-     * @param ssl_flag if true then the connection will be encrypted using SSL 
+     * @param ssl_flag if true then the connection will be encrypted using SSL
      */
-    explicit stream(pion::asio::io_service& io_service,
+    explicit stream(asio::io_service& io_service,
                        const bool ssl_flag = false)
-        : std::basic_iostream<char, std::char_traits<char> >(NULL), m_tcp_buf(io_service, ssl_flag)
+        : std::basic_iostream<char, std::char_traits<char> >(nullptr), m_tcp_buf(io_service, ssl_flag)
     {
         // initialize basic_iostream with pointer to the stream buffer
         std::basic_ios<char,std::char_traits<char> >::init(&m_tcp_buf);
     }
-    
+
     /**
      * constructs a TCP stream object for a new SSL/TCP connection
      *
      * @param io_service asio service associated with the connection
      * @param ssl_context asio ssl context associated with the connection
      */
-    stream(pion::asio::io_service& io_service,
+    stream(asio::io_service& io_service,
               connection::ssl_context_type& ssl_context)
-        : std::basic_iostream<char, std::char_traits<char> >(NULL), m_tcp_buf(io_service, ssl_context)
+        : std::basic_iostream<char, std::char_traits<char> >(nullptr), m_tcp_buf(io_service, ssl_context)
     {
         // initialize basic_iostream with pointer to the stream buffer
         std::basic_ios<char,std::char_traits<char> >::init(&m_tcp_buf);
     }
-    
+
     /**
      * accepts a new tcp connection and performs SSL handshake if necessary
      *
      * @param tcp_acceptor object used to accept new connections
-     * @return pion::error_code contains error code if the connection fails
+     * @return std::error_code contains error code if the connection fails
      *
-     * @see pion::asio::basic_socket_acceptor::accept()
+     * @see asio::basic_socket_acceptor::accept()
      */
-    inline pion::error_code accept(pion::asio::ip::tcp::acceptor& tcp_acceptor)
+    inline std::error_code accept(asio::ip::tcp::acceptor& tcp_acceptor)
     {
-        pion::error_code ec = m_tcp_buf.get_connection().accept(tcp_acceptor);
+        std::error_code ec = m_tcp_buf.get_connection().accept(tcp_acceptor);
         if (! ec && get_ssl_flag()) ec = m_tcp_buf.get_connection().handshake_server();
         return ec;
     }
@@ -392,62 +392,62 @@ public:
      * connects to a remote endpoint and performs SSL handshake if necessary
      *
      * @param tcp_endpoint remote endpoint to connect to
-     * @return pion::error_code contains error code if the connection fails
+     * @return std::error_code contains error code if the connection fails
      *
-     * @see pion::asio::basic_socket_acceptor::connect()
+     * @see asio::basic_socket_acceptor::connect()
      */
-    inline pion::error_code connect(pion::asio::ip::tcp::endpoint& tcp_endpoint)
+    inline std::error_code connect(asio::ip::tcp::endpoint& tcp_endpoint)
     {
-        pion::error_code ec = m_tcp_buf.get_connection().connect(tcp_endpoint);
+        std::error_code ec = m_tcp_buf.get_connection().connect(tcp_endpoint);
         if (! ec && get_ssl_flag()) ec = m_tcp_buf.get_connection().handshake_client();
         return ec;
     }
-    
+
     /**
      * connects to a (IPv4) remote endpoint and performs SSL handshake if necessary
      *
      * @param remote_addr remote IP address (v4) to connect to
      * @param remote_port remote port number to connect to
-     * @return pion::error_code contains error code if the connection fails
+     * @return std::error_code contains error code if the connection fails
      *
-     * @see pion::asio::basic_socket_acceptor::connect()
+     * @see asio::basic_socket_acceptor::connect()
      */
-    inline pion::error_code connect(const pion::asio::ip::address& remote_addr,
+    inline std::error_code connect(const asio::ip::address& remote_addr,
                                              const unsigned int remote_port)
     {
-        pion::asio::ip::tcp::endpoint tcp_endpoint(remote_addr, remote_port);
-        pion::error_code ec = m_tcp_buf.get_connection().connect(tcp_endpoint);
+        asio::ip::tcp::endpoint tcp_endpoint(remote_addr, remote_port);
+        std::error_code ec = m_tcp_buf.get_connection().connect(tcp_endpoint);
         if (! ec && get_ssl_flag()) ec = m_tcp_buf.get_connection().handshake_client();
         return ec;
     }
 
     /// closes the tcp connection
-    inline void close(void) { m_tcp_buf.get_connection().close(); }
+    inline void close() { m_tcp_buf.get_connection().close(); }
 
     /*
     Use close instead; basic_socket::cancel is deprecated for Windows XP.
 
     /// cancels any asynchronous operations pending on the tcp connection
-    inline void cancel(void) { m_tcp_buf.get_connection().cancel(); }
+    inline void cancel() { m_tcp_buf.get_connection().cancel(); }
     */
 
     /// returns true if the connection is currently open
-    inline bool is_open(void) const { return m_tcp_buf.get_connection().is_open(); }
-    
+    inline bool is_open() const { return m_tcp_buf.get_connection().is_open(); }
+
     /// returns true if the connection is encrypted using SSL
-    inline bool get_ssl_flag(void) const { return m_tcp_buf.get_connection().get_ssl_flag(); }
+    inline bool get_ssl_flag() const { return m_tcp_buf.get_connection().get_ssl_flag(); }
 
     /// returns the client's IP address
-    inline pion::asio::ip::address get_remote_ip(void) const {
+    inline asio::ip::address get_remote_ip() const {
         return m_tcp_buf.get_connection().get_remote_ip();
     }
-    
+
     /// returns a pointer to the stream buffer in use
-    stream_buffer *rdbuf(void) { return &m_tcp_buf; }
-    
-    
+    stream_buffer *rdbuf() { return &m_tcp_buf; }
+
+
 private:
-    
+
     /// the underlying TCP stream buffer used for reading & writing
     stream_buffer     m_tcp_buf;
 };

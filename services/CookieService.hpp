@@ -18,18 +18,18 @@ namespace plugins {     // begin namespace plugins
 
 ///
 /// CookieService: web service that displays and updates cookies
-/// 
+///
 class CookieService :
     public pion::http::plugin_service
 {
 public:
-    CookieService(void) {}
-    virtual ~CookieService() {}
+    CookieService() = default;
+    virtual ~CookieService() = default;
     virtual void operator()(const pion::http::request_ptr& http_request_ptr,
                             const pion::tcp::connection_ptr& tcp_conn);
 };
 
 }   // end namespace plugins
 }   // end namespace pion
-    
+
 #endif

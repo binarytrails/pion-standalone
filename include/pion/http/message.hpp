@@ -14,31 +14,16 @@
 #include <iosfwd>
 #include <vector>
 #include <cstring>
-#include <pion/utils/pion_stdint.hpp>
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_memory.hpp>
+#include <asio.hpp>
+#include <memory>
 #include <pion/utils/pion_string.hpp>
-#include <pion/utils/pion_system_error.hpp>
-#include <pion/utils/pion_regex.hpp>
+#include <system_error>
+#include <regex>
 #include <pion/http/types.hpp>
 
-#ifdef ASIO_STANDALONE
-	#define BOOST_SYSTEM_NOEXCEPT noexcept
-#else
-#ifndef BOOST_SYSTEM_NOEXCEPT
-    // if 'BOOST_NOEXCEPT' is not defined, as with some older versions of
-    // boost, setting it to nothing should be harmless.
-    #ifndef BOOST_NOEXCEPT
-        #define BOOST_SYSTEM_NOEXCEPT
-    #else
-        #define BOOST_SYSTEM_NOEXCEPT BOOST_NOEXCEPT
-    #endif
-#endif
-#endif
-
 namespace pion {    // begin namespace pion
-	
-	
+
+
 namespace tcp {
     // forward declaration for class used by send() and receive()
     class connection;
@@ -51,27 +36,27 @@ namespace http {    // begin namespace http
 // forward declaration of parser class
 class parser;
 
-    
+
 ///
 /// message: base container for HTTP messages
-/// 
+///
 class PION_API message
     : public http::types
 {
 public:
 
     /// data type for I/O write buffers (these wrap existing data to be sent)
-    typedef std::vector<pion::asio::const_buffer>  write_buffers_t;
+    typedef std::vector<asio::const_buffer>  write_buffers_t;
 
     /// used to cache chunked data
     typedef std::vector<char>   chunk_cache_t;
 
     /// data type for library errors returned during receive() operations
     struct receive_error_t
-        : public pion::error_category
+        : public std::error_category
     {
-        virtual ~receive_error_t() {}
-        virtual inline const char *name() const BOOST_SYSTEM_NOEXCEPT { return "receive_error_t"; }
+        virtual ~receive_error_t() = default;
+        virtual inline const char *name() const noexcept { return "receive_error_t"; }
         virtual inline std::string message(int ev) const {
             std::string result;
             switch(ev) {
@@ -90,13 +75,13 @@ public:
     enum data_status_t
     {
         STATUS_NONE,        // no data received (i.e. all lost)
-        STATUS_TRUNCATED,   // one or more missing packets at the end 
-        STATUS_PARTIAL,     // one or more missing packets but NOT at the end 
+        STATUS_TRUNCATED,   // one or more missing packets at the end
+        STATUS_PARTIAL,     // one or more missing packets but NOT at the end
         STATUS_OK           // no missing packets
     };
 
     /// constructs a new HTTP message object
-    message(void)
+    message()
         : m_is_valid(false), m_is_chunked(false), m_chunks_supported(false),
         m_do_not_send_content_length(false),
         m_version_major(1), m_version_minor(1), m_content_length(0), m_content_buf(),
@@ -146,14 +131,14 @@ public:
     }
 
     /// virtual destructor
-    virtual ~message() {}
+    virtual ~message() = default;
 
     /// clears all message data
-    virtual void clear(void) {
+    virtual void clear() {
         clear_first_line();
         m_is_valid = m_is_chunked = m_chunks_supported
             = m_do_not_send_content_length = false;
-        m_remote_ip = pion::asio::ip::address_v4(0);
+        m_remote_ip = asio::ip::address_v4(0);
         m_version_major = m_version_minor = 1;
         m_content_length = 0;
         m_content_buf.clear();
@@ -166,54 +151,54 @@ public:
     }
 
     /// should return true if the content length can be implied without headers
-    virtual bool is_content_length_implied(void) const = 0;
+    virtual bool is_content_length_implied() const = 0;
 
     /// returns true if the message is valid
-    inline bool is_valid(void) const { return m_is_valid; }
+    inline bool is_valid() const { return m_is_valid; }
 
     /// returns true if chunked transfer encodings are supported
-    inline bool get_chunks_supported(void) const { return m_chunks_supported; }
+    inline bool get_chunks_supported() const { return m_chunks_supported; }
 
     /// returns IP address of the remote endpoint
-    inline pion::asio::ip::address& get_remote_ip(void) {
+    inline asio::ip::address& get_remote_ip() {
         return m_remote_ip;
     }
 
     /// returns the major HTTP version number
-    inline pion::uint16_t get_version_major(void) const { return m_version_major; }
+    inline uint16_t get_version_major() const { return m_version_major; }
 
     /// returns the minor HTTP version number
-    inline pion::uint16_t get_version_minor(void) const { return m_version_minor; }
+    inline uint16_t get_version_minor() const { return m_version_minor; }
 
     /// returns a string representation of the HTTP version (i.e. "HTTP/1.1")
-    inline std::string get_version_string(void) const {
+    inline std::string get_version_string() const {
         std::string http_version(STRING_HTTP_VERSION);
-        http_version += pion::to_string(get_version_major());
+        http_version += std::to_string(get_version_major());
         http_version += '.';
-        http_version += pion::to_string(get_version_minor());
+        http_version += std::to_string(get_version_minor());
         return http_version;
     }
 
     /// returns the length of the payload content (in bytes)
-    inline size_t get_content_length(void) const { return m_content_length; }
+    inline size_t get_content_length() const { return m_content_length; }
 
     /// returns true if the message content is chunked
-    inline bool is_chunked(void) const { return m_is_chunked; }
+    inline bool is_chunked() const { return m_is_chunked; }
 
     /// returns true if buffer for content is allocated
     bool is_content_buffer_allocated() const { return !m_content_buf.is_empty(); }
-    
+
     /// returns size of allocated buffer
     inline std::size_t get_content_buffer_size() const { return m_content_buf.size(); }
-    
+
     /// returns a pointer to the payload content, or empty string if there is none
-    inline char *get_content(void) { return m_content_buf.get(); }
+    inline char *get_content() { return m_content_buf.get(); }
 
     /// returns a const pointer to the payload content, or empty string if there is none
-    inline const char *get_content(void) const { return m_content_buf.get(); }
+    inline const char *get_content() const { return m_content_buf.get(); }
 
     /// returns a reference to the chunk cache
-    inline chunk_cache_t& get_chunk_cache(void) { return m_chunk_cache; }
+    inline chunk_cache_t& get_chunk_cache() { return m_chunk_cache; }
 
     /// returns a value for the header if any are defined; otherwise, an empty string
     inline const std::string& get_header(const std::string& key) const {
@@ -221,7 +206,7 @@ public:
     }
 
     /// returns a reference to the HTTP headers
-    inline ihash_multimap& get_headers(void) {
+    inline ihash_multimap& get_headers() {
         return m_headers;
     }
 
@@ -235,9 +220,9 @@ public:
     inline const std::string& get_cookie(const std::string& key) const {
         return get_value(m_cookie_params, key);
     }
-    
+
     /// returns the cookie parameters
-    inline ihash_multimap& get_cookies(void) {
+    inline ihash_multimap& get_cookies() {
         return m_cookie_params;
     }
 
@@ -246,7 +231,7 @@ public:
     inline bool has_cookie(const std::string& key) const {
         return(m_cookie_params.find(key) != m_cookie_params.end());
     }
-    
+
     /// adds a value for the cookie
     /// since cookie names are insensitive, key should use lowercase alpha chars
     inline void add_cookie(const std::string& key, const std::string& value) {
@@ -264,17 +249,17 @@ public:
     inline void delete_cookie(const std::string& key) {
         delete_value(m_cookie_params, key);
     }
-    
+
     /// returns a string containing the first line for the HTTP message
-    inline const std::string& get_first_line(void) const {
+    inline const std::string& get_first_line() const {
         if (m_first_line.empty())
             update_first_line();
         return m_first_line;
     }
 
-    /// true if there were missing packets 
+    /// true if there were missing packets
     inline bool has_missing_packets() const { return m_has_missing_packets; }
-    
+
     /// set to true when missing packets detected
     inline void set_missing_packets(bool newVal) { m_has_missing_packets = newVal; }
 
@@ -290,16 +275,16 @@ public:
     inline void set_chunks_supported(bool b) { m_chunks_supported = b; }
 
     /// sets IP address of the remote endpoint
-    inline void set_remote_ip(const pion::asio::ip::address& ip) { m_remote_ip = ip; }
+    inline void set_remote_ip(const asio::ip::address& ip) { m_remote_ip = ip; }
 
     /// sets the major HTTP version number
-    inline void set_version_major(const pion::uint16_t n) {
+    inline void set_version_major(const uint16_t n) {
         m_version_major = n;
         clear_first_line();
     }
 
     /// sets the minor HTTP version number
-    inline void set_version_minor(const pion::uint16_t n) {
+    inline void set_version_minor(const uint16_t n) {
         m_version_minor = n;
         clear_first_line();
     }
@@ -308,44 +293,44 @@ public:
     inline void set_content_length(size_t n) { m_content_length = n; }
 
     /// if called, the content-length will not be sent in the HTTP headers
-    inline void set_do_not_send_content_length(void) { m_do_not_send_content_length = true; }
+    inline void set_do_not_send_content_length() { m_do_not_send_content_length = true; }
 
     /// return the data receival status
     inline data_status_t get_status() const { return m_status; }
 
-    /// 
+    ///
     inline void set_status(data_status_t newVal) { m_status = newVal; }
 
     /// sets the length of the payload content using the Content-Length header
-    inline void update_content_length_using_header(void) {
+    inline void update_content_length_using_header() {
         ihash_multimap::const_iterator i = m_headers.find(HEADER_CONTENT_LENGTH);
         if (i == m_headers.end()) {
             m_content_length = 0;
         } else {
             std::string trimmed_length(i->second);
             pion::trim(trimmed_length);
-            m_content_length = pion::stoull(trimmed_length);
+            m_content_length = std::stoull(trimmed_length);
         }
     }
 
     /// sets the transfer coding using the Transfer-Encoding header
-    inline void update_transfer_encoding_using_header(void) {
+    inline void update_transfer_encoding_using_header() {
         m_is_chunked = false;
         ihash_multimap::const_iterator i = m_headers.find(HEADER_TRANSFER_ENCODING);
         if (i != m_headers.end()) {
             // From RFC 2616, sec 3.6: All transfer-coding values are case-insensitive.
-            m_is_chunked = pion::regex_match(i->second, REGEX_ICASE_CHUNKED);
+            m_is_chunked = std::regex_match(i->second, REGEX_ICASE_CHUNKED);
             // ignoring other possible values for now
         }
     }
 
     ///creates a payload content buffer of size m_content_length and returns
     /// a pointer to the new buffer (memory is managed by message class)
-    inline char *create_content_buffer(void) {
+    inline char *create_content_buffer() {
         m_content_buf.resize(m_content_length);
         return m_content_buf.get();
     }
-    
+
     /// resets payload content to match the value of a string
     inline void set_content(const std::string& content) {
         set_content_length(content.size());
@@ -354,7 +339,7 @@ public:
     }
 
     /// clears payload content buffer
-    inline void clear_content(void) {
+    inline void clear_content() {
         set_content_length(0);
         create_content_buffer();
         delete_value(m_headers, HEADER_CONTENT_TYPE);
@@ -381,7 +366,7 @@ public:
     }
 
     /// returns true if the HTTP connection may be kept alive
-    inline bool check_keep_alive(void) const {
+    inline bool check_keep_alive() const {
         return (get_header(HEADER_CONNECTION) != "close"
                 && (get_version_major() > 1
                     || (get_version_major() >= 1 && get_version_minor() >= 1)) );
@@ -401,8 +386,8 @@ public:
         // update message headers
         prepare_headers_for_send(keep_alive, using_chunks);
         // add first message line
-        write_buffers.push_back(pion::asio::buffer(get_first_line()));
-        write_buffers.push_back(pion::asio::buffer(STRING_CRLF));
+        write_buffers.push_back(asio::buffer(get_first_line()));
+        write_buffers.push_back(asio::buffer(STRING_CRLF));
         // append cookie headers (if any)
         append_cookie_headers();
         // append HTTP headers
@@ -420,7 +405,7 @@ public:
      * @return std::size_t number of bytes written to the connection
      */
     std::size_t send(tcp::connection& tcp_conn,
-                     pion::error_code& ec,
+                     std::error_code& ec,
                      bool headers_only = false);
 
     /**
@@ -433,9 +418,9 @@ public:
      * @return std::size_t number of bytes read from the connection
      */
     std::size_t receive(tcp::connection& tcp_conn,
-                        pion::error_code& ec,
+                        std::error_code& ec,
                         parser& http_parser);
-    
+
     /**
      * receives a new message from a TCP connection (blocks until finished)
      *
@@ -447,7 +432,7 @@ public:
      * @return std::size_t number of bytes read from the connection
      */
     std::size_t receive(tcp::connection& tcp_conn,
-                        pion::error_code& ec,
+                        std::error_code& ec,
                         bool headers_only = false,
                         std::size_t max_content_length = static_cast<size_t>(-1));
 
@@ -461,7 +446,7 @@ public:
      * @return std::size_t number of bytes written to the connection
      */
     std::size_t write(std::ostream& out,
-                      pion::error_code& ec,
+                      std::error_code& ec,
                       bool headers_only = false);
 
     /**
@@ -474,9 +459,9 @@ public:
      * @return std::size_t number of bytes read from the connection
      */
     std::size_t read(std::istream& in,
-                     pion::error_code& ec,
+                     std::error_code& ec,
                      parser& http_parser);
-    
+
     /**
      * reads a new message from a std::istream (blocks until finished)
      *
@@ -488,23 +473,23 @@ public:
      * @return std::size_t number of bytes read from the connection
      */
     std::size_t read(std::istream& in,
-                     pion::error_code& ec,
+                     std::error_code& ec,
                      bool headers_only = false,
                      std::size_t max_content_length = static_cast<size_t>(-1));
 
     /**
      * pieces together all the received chunks
      */
-    void concatenate_chunks(void);
+    void concatenate_chunks();
 
 
 protected:
-    
+
     /// a simple helper class used to manage a fixed-size payload content buffer
     class content_buffer_t {
     public:
         /// simple destructor
-        ~content_buffer_t() {}
+        ~content_buffer_t() = default;
 
         /// default constructor
         content_buffer_t() : m_buf(), m_len(0), m_empty(0), m_ptr(&m_empty) {}
@@ -529,19 +514,19 @@ protected:
             }
             return *this;
         }
-        
+
         /// returns true if buffer is empty
         inline bool is_empty() const { return m_len == 0; }
-        
+
         /// returns size in bytes
         inline std::size_t size() const { return m_len; }
-        
+
         /// returns const pointer to data
         inline const char *get() const { return m_ptr; }
-        
+
         /// returns mutable pointer to data
         inline char *get() { return m_ptr; }
-        
+
         /// changes the size of the content buffer
         inline void resize(std::size_t len) {
             m_len = len;
@@ -554,16 +539,12 @@ protected:
                 m_ptr = m_buf.get();
             }
         }
-        
+
         /// clears the content buffer
         inline void clear() { resize(0); }
-        
+
     private:
-#ifdef ASIO_STANDALONE
 		std::unique_ptr<char []>   m_buf;
-#else
-        boost::scoped_array<char>   m_buf;
-#endif
         std::size_t                 m_len;
         char                        m_empty;
         char                        *m_ptr;
@@ -583,7 +564,7 @@ protected:
             if (get_chunks_supported())
                 change_header(HEADER_TRANSFER_ENCODING, "chunked");
         } else if (! m_do_not_send_content_length) {
-            change_header(HEADER_CONTENT_LENGTH, pion::to_string(get_content_length()));
+            change_header(HEADER_CONTENT_LENGTH, std::to_string(get_content_length()));
         }
     }
 
@@ -595,17 +576,17 @@ protected:
     inline void append_headers(write_buffers_t& write_buffers) {
         // add HTTP headers
         for (ihash_multimap::const_iterator i = m_headers.begin(); i != m_headers.end(); ++i) {
-            write_buffers.push_back(pion::asio::buffer(i->first));
-            write_buffers.push_back(pion::asio::buffer(HEADER_NAME_VALUE_DELIMITER));
-            write_buffers.push_back(pion::asio::buffer(i->second));
-            write_buffers.push_back(pion::asio::buffer(STRING_CRLF));
+            write_buffers.push_back(asio::buffer(i->first));
+            write_buffers.push_back(asio::buffer(HEADER_NAME_VALUE_DELIMITER));
+            write_buffers.push_back(asio::buffer(i->second));
+            write_buffers.push_back(asio::buffer(STRING_CRLF));
         }
         // add an extra CRLF to end HTTP headers
-        write_buffers.push_back(pion::asio::buffer(STRING_CRLF));
+        write_buffers.push_back(asio::buffer(STRING_CRLF));
     }
 
     /// appends HTTP headers for any cookies defined by the http::message
-    virtual void append_cookie_headers(void) {}
+    virtual void append_cookie_headers() {}
 
     /**
      * Returns the first value in a dictionary if key is found; or an empty
@@ -675,13 +656,13 @@ protected:
 
     /// erases the string containing the first line for the HTTP message
     /// (it will be updated the next time get_first_line() is called)
-    inline void clear_first_line(void) const {
+    inline void clear_first_line() const {
         if (! m_first_line.empty())
             m_first_line.clear();
     }
 
     /// updates the string containing the first line for the HTTP message
-    virtual void update_first_line(void) const = 0;
+    virtual void update_first_line() const = 0;
 
     /// first line sent in an HTTP message
     /// (i.e. "GET / HTTP/1.1" for request, or "HTTP/1.1 200 OK" for response)
@@ -691,7 +672,7 @@ protected:
 private:
 
     /// Regex used to check for the "chunked" transfer encoding header
-    static const pion::regex       REGEX_ICASE_CHUNKED;
+    static const std::regex       REGEX_ICASE_CHUNKED;
 
     /// True if the HTTP message is valid
     bool                            m_is_valid;
@@ -706,13 +687,13 @@ private:
     bool                            m_do_not_send_content_length;
 
     /// IP address of the remote endpoint
-    pion::asio::ip::address        m_remote_ip;
+    asio::ip::address        m_remote_ip;
 
     /// HTTP major version number
-    pion::uint16_t                 m_version_major;
+    uint16_t                 m_version_major;
 
     /// HTTP major version number
-    pion::uint16_t                 m_version_minor;
+    uint16_t                 m_version_minor;
 
     /// the length of the payload content (in bytes)
     size_t                          m_content_length;

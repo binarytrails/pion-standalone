@@ -14,7 +14,7 @@
 #include <pion/algorithm.hpp>
 #include <pion/utils/pion_string.hpp>
 #include <pion/utils/pion_tribool.hpp>
-#include <pion/utils/pion_assert.hpp>
+#include <cassert>
 
 // macro to shift bitmask by a single bit
 #define SHIFT_BITMASK(ptr, mask)    if (mask & 0x01) { mask = 0x80; ++ptr; } else mask >>= 1;
@@ -26,7 +26,7 @@ const char * const algorithm::UTF8_REPLACEMENT_CHAR = "\xEF\xBF\xBD";
 
 bool algorithm::base64_decode(const std::string &input, std::string &output)
 {
-    static const char nop = -1; 
+    static const char nop = -1;
     static const char decoding_data[] = {
         nop,nop,nop,nop, nop,nop,nop,nop, nop,nop,nop,nop, nop,nop,nop,nop,
         nop,nop,nop,nop, nop,nop,nop,nop, nop,nop,nop,nop, nop,nop,nop,nop,
@@ -76,7 +76,7 @@ bool algorithm::base64_decode(const std::string &input, std::string &output)
         if(++i<input_length) {
             char c = input_ptr[i];
             if(c =='=') { // padding , end of input
-                PION_ASSERT( (base64code1 & 0x0f)==0);
+                assert( (base64code1 & 0x0f)==0);
                 return true;
             }
             base64code2 = decoding_data[static_cast<int>(input_ptr[i])];
@@ -89,7 +89,7 @@ bool algorithm::base64_decode(const std::string &input, std::string &output)
         if(++i<input_length) {
             char c = input_ptr[i];
             if(c =='=') { // padding , end of input
-                PION_ASSERT( (base64code2 & 0x03)==0);
+                assert( (base64code2 & 0x03)==0);
                 return true;
             }
             base64code3 = decoding_data[static_cast<int>(input_ptr[i])];
@@ -106,7 +106,7 @@ bool algorithm::base64_decode(const std::string &input, std::string &output)
 
 bool algorithm::base64_encode(const std::string &input, std::string &output)
 {
-    static const char encoding_data[] = 
+    static const char encoding_data[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     unsigned int input_length=input.size();
@@ -116,9 +116,9 @@ bool algorithm::base64_encode(const std::string &input, std::string &output)
     output.clear();
     output.reserve(((input_length+2)/3)*4);
 
-    // for each 3-bytes sequence from the input, extract 4 6-bits sequences and encode using 
+    // for each 3-bytes sequence from the input, extract 4 6-bits sequences and encode using
     // encoding_data lookup table.
-    // if input do not contains enough chars to complete 3-byte sequence,use pad char '=' 
+    // if input do not contains enough chars to complete 3-byte sequence,use pad char '='
     for (unsigned int i=0; i<input_length;i++) {
         int base64code0=0;
         int base64code1=0;
@@ -132,7 +132,7 @@ bool algorithm::base64_encode(const std::string &input, std::string &output)
         if (++i < input_length) {
             base64code1 |= (input_ptr[i] >> 4) & 0x0f; // 2-byte 4 bits
             output += encoding_data[base64code1];
-            base64code2 = (input_ptr[i] << 2) & 0x3f;  // 2-byte 4 bits + 
+            base64code2 = (input_ptr[i] << 2) & 0x3f;  // 2-byte 4 bits +
 
             if (++i < input_length) {
                 base64code2 |= (input_ptr[i] >> 6) & 0x03; // 3-byte 2 bits
@@ -158,7 +158,7 @@ std::string algorithm::url_decode(const std::string& str)
     char decode_buf[3];
     std::string result;
     result.reserve(str.size());
-    
+
     for (std::string::size_type pos = 0; pos < str.size(); ++pos) {
         switch(str[pos]) {
         case '+':
@@ -192,10 +192,10 @@ std::string algorithm::url_decode(const std::string& str)
             result += str[pos];
         }
     };
-    
+
     return result;
 }
-    
+
 std::string algorithm::url_encode(const std::string& str)
 {
     char encode_buf[4];
@@ -205,7 +205,7 @@ std::string algorithm::url_encode(const std::string& str)
 
     // character selection for this algorithm is based on the following url:
     // http://www.blooberry.com/indexdot/html/topics/urlencoding.htm
-    
+
     for (std::string::size_type pos = 0; pos < str.size(); ++pos) {
         switch(str[pos]) {
         default:
@@ -215,7 +215,7 @@ std::string algorithm::url_encode(const std::string& str)
                 break;
             }
             // else pass through to next case
-        case ' ':   
+        case ' ':
         case '$': case '&': case '+': case ',': case '/': case ':':
         case ';': case '=': case '?': case '@': case '"': case '<':
         case '>': case '#': case '%': case '{': case '}': case '|':
@@ -226,7 +226,7 @@ std::string algorithm::url_encode(const std::string& str)
             break;
         }
     };
-    
+
     return result;
 }
 
@@ -307,7 +307,7 @@ std::string algorithm::xml_encode(const std::string& str)
         }
         ++ptr;
     }
-    
+
     return result;
 }
 
@@ -315,17 +315,17 @@ void algorithm::float_from_bytes(long double& value, const unsigned char *ptr, s
 {
     // get sign of the number from the first bit
     const int value_sign = (*ptr & 0x80) ? -1 : 1;
-    
+
     // build exponent value from bitstream
     unsigned char mask = 0x80;
-    pion::int16_t exponent = 0;
+    int16_t exponent = 0;
     for (size_t n = 0; n < num_exp_bits; ++n) {
         SHIFT_BITMASK(ptr, mask);
         exponent *= 2;
         if (*ptr & mask)
             exponent += 1;
     }
-    
+
     // build significand from bitstream
     long double significand = exponent ? 1.0 : 0.0;
     long double significand_value = 1.0;
@@ -336,9 +336,9 @@ void algorithm::float_from_bytes(long double& value, const unsigned char *ptr, s
             significand += significand_value;
         --num_fraction_bits;
     }
-    
+
     // calculate final value
-    exponent -= (pion::int16_t)(::pow((long double)2, (int)(num_exp_bits - 1)) - 1);
+    exponent -= (int16_t)(::pow((long double)2, (int)(num_exp_bits - 1)) - 1);
     value = value_sign * significand * ::pow((long double)2, exponent);
 }
 
@@ -347,15 +347,15 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
     // first initialize output buffer to zeros
     unsigned char *ptr = buf;
     memset(ptr, 0x00, (size_t)(::ceil(static_cast<float>(num_exp_bits + num_fraction_bits + 1) / 8)));
-    
+
     // initialize first byte starting with sign of number
     if (value < 0) {
         *ptr = 0x80;
         value *= -1;
     }
-    
+
     // break down numbers >= 1.0 by incrementing the exponent & dividing by 2
-    pion::int16_t exponent = 0;
+    int16_t exponent = 0;
     while (value >= 1) {
         value /= 2;
         ++exponent;
@@ -371,10 +371,10 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
             SHIFT_BITMASK(ptr, mask);
         }
     }
-    
+
     // serialize fractional value < 1.0
     bool got_exponent = false;
-    pion::uint16_t num_bits = 0;
+    uint16_t num_bits = 0;
     while (value && num_bits < num_fraction_bits) {
         value *= 2;
         if (got_exponent) {
@@ -392,15 +392,15 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
             }
         }
     }
-    
+
     // normalize exponent.
     // note: we should have a zero exponent if value == 0
-    pion::int32_t high_bit = (pion::int32_t)(::pow((long double)2, (int)(num_exp_bits - 1)));
+    int32_t high_bit = (int32_t)(::pow((long double)2, (int)(num_exp_bits - 1)));
     if (got_exponent)
         exponent += (high_bit - 1);
     else
         exponent = 0;
-    
+
     // serialize exponent bits
     ptr = buf;
     mask = 0x80;

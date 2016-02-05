@@ -7,11 +7,11 @@
 // See http://www.boost.org/LICENSE_1_0.txt
 //
 
-#include <pion/utils/pion_asio.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_assert.hpp>
+#include <asio.hpp>
+#include <functional>
 #include <pion/utils/pion_filesystem.hpp>
 #include <pion/utils/pion_string.hpp>
+#include <cassert>
 
 #include "FileService.hpp"
 #include <pion/error.hpp>
@@ -32,13 +32,13 @@ const unsigned int          FileService::DEFAULT_CACHE_SETTING = 1;
 const unsigned int          FileService::DEFAULT_SCAN_SETTING = 0;
 const unsigned long         FileService::DEFAULT_MAX_CACHE_SIZE = 0;    /* 0=disabled */
 const unsigned long         FileService::DEFAULT_MAX_CHUNK_SIZE = 0;    /* 0=disabled */
-pion::once_flag            FileService::m_mime_types_init_flag = PION_ONCE_INIT;
+std::once_flag            FileService::m_mime_types_init_flag;
 FileService::MIMETypeMap    *FileService::m_mime_types_ptr = NULL;
 
 
 // FileService member functions
 
-FileService::FileService(void)
+FileService::FileService()
     : m_logger(PION_GET_LOGGER("pion.FileService")),
     m_cache_setting(DEFAULT_CACHE_SETTING),
     m_scan_setting(DEFAULT_SCAN_SETTING),
@@ -89,7 +89,7 @@ void FileService::set_option(const std::string& name, const std::string& value)
             PION_THROW_EXCEPTION( error::bad_arg() << error::errinfo_arg_name(name) );
         }
     } else if (name == "max_chunk_size") {
-        m_max_chunk_size = pion::stoul(value);
+        m_max_chunk_size = std::stoul(value);
     } else if (name == "writable") {
         if (value == "true") {
             m_writable = true;
@@ -152,7 +152,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
             " is not in the configured directory.</p>\n"
             "</body></html>\n";
         http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                     pion::bind(&tcp::connection::finish, tcp_conn)));
+                                     std::bind(&tcp::connection::finish, tcp_conn)));
         writer->get_response().set_status_code(http::types::RESPONSE_CODE_FORBIDDEN);
         writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_FORBIDDEN);
         if (http_request_ptr->get_method() != http::types::REQUEST_METHOD_HEAD) {
@@ -178,7 +178,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
             " is a directory.</p>\n"
             "</body></html>\n";
         http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                     pion::bind(&tcp::connection::finish, tcp_conn)));
+                                     std::bind(&tcp::connection::finish, tcp_conn)));
         writer->get_response().set_status_code(http::types::RESPONSE_CODE_FORBIDDEN);
         writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_FORBIDDEN);
         if (http_request_ptr->get_method() != http::types::REQUEST_METHOD_HEAD) {
@@ -190,7 +190,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
         return;
     }
 
-    if (http_request_ptr->get_method() == http::types::REQUEST_METHOD_GET 
+    if (http_request_ptr->get_method() == http::types::REQUEST_METHOD_GET
         || http_request_ptr->get_method() == http::types::REQUEST_METHOD_HEAD)
     {
         // the type of response we will send
@@ -213,7 +213,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
         if (m_cache_setting > 0 || m_scan_setting > 0) {
 
             // search for a matching cache entry
-            pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
+            std::unique_lock<std::mutex> cache_lock(m_cache_mutex);
             CacheMap::iterator cache_itr = m_cache_map.find(relative_path);
 
             if (cache_itr == m_cache_map.end()) {
@@ -346,7 +346,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
                     // add new entry to the cache
                     PION_LOG_DEBUG(m_logger, "Adding cache entry for request ("
                                    << get_resource() << "): " << relative_path);
-                    pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
+                    std::unique_lock<std::mutex> cache_lock(m_cache_mutex);
                     m_cache_map.insert( std::make_pair(relative_path, response_file) );
                 }
             }
@@ -365,7 +365,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
 
             // prepare a response and set the Content-Type
             http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                         pion::bind(&tcp::connection::finish, tcp_conn)));
+                                         std::bind(&tcp::connection::finish, tcp_conn)));
             writer->get_response().set_content_type(response_file.getMimeType());
 
             // set Last-Modified header to enable client-side caching
@@ -377,7 +377,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
                 case RESPONSE_NOT_FOUND:
                 case RESPONSE_OK:
                     // this should never happen
-                    PION_ASSERT(false);
+                    assert(false);
                     break;
                 case RESPONSE_NOT_MODIFIED:
                     // set "Not Modified" response
@@ -410,7 +410,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
                 " is not allowed on this server.</p>\n"
                 "</body></html>\n";
             http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                         pion::bind(&tcp::connection::finish, tcp_conn)));
+                                         std::bind(&tcp::connection::finish, tcp_conn)));
             writer->get_response().set_status_code(http::types::RESPONSE_CODE_METHOD_NOT_ALLOWED);
             writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_METHOD_NOT_ALLOWED);
             writer->write_no_copy(NOT_ALLOWED_HTML_START);
@@ -420,7 +420,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
             writer->send();
         } else {
             http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                         pion::bind(&tcp::connection::finish, tcp_conn)));
+                                         std::bind(&tcp::connection::finish, tcp_conn)));
             if (http_request_ptr->get_method() == http::types::REQUEST_METHOD_POST
                 || http_request_ptr->get_method() == http::types::REQUEST_METHOD_PUT)
             {
@@ -535,7 +535,7 @@ void FileService::operator()(const http::request_ptr& http_request_ptr, const tc
             " is not implemented on this server.</p>\n"
             "</body></html>\n";
         http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                     pion::bind(&tcp::connection::finish, tcp_conn)));
+                                     std::bind(&tcp::connection::finish, tcp_conn)));
         writer->get_response().set_status_code(http::types::RESPONSE_CODE_NOT_IMPLEMENTED);
         writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_NOT_IMPLEMENTED);
         writer->write_no_copy(NOT_IMPLEMENTED_HTML_START);
@@ -558,7 +558,7 @@ void FileService::sendNotFoundResponse(const http::request_ptr& http_request_ptr
         " was not found on this server.</p>\n"
         "</body></html>\n";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                 pion::bind(&tcp::connection::finish, tcp_conn)));
+                                 std::bind(&tcp::connection::finish, tcp_conn)));
     writer->get_response().set_status_code(http::types::RESPONSE_CODE_NOT_FOUND);
     writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_NOT_FOUND);
     if (http_request_ptr->get_method() != http::types::REQUEST_METHOD_HEAD) {
@@ -569,7 +569,7 @@ void FileService::sendNotFoundResponse(const http::request_ptr& http_request_ptr
     writer->send();
 }
 
-void FileService::start(void)
+void FileService::start()
 {
     PION_LOG_DEBUG(m_logger, "Starting up resource (" << get_resource() << ')');
 
@@ -579,7 +579,7 @@ void FileService::start(void)
         if (m_cache_setting == 0 && m_scan_setting > 1)
             m_cache_setting = 1;
 
-        pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
+        std::unique_lock<std::mutex> cache_lock(m_cache_mutex);
 
         // add entry for file if one is defined
         if (! m_file.empty()) {
@@ -594,11 +594,11 @@ void FileService::start(void)
     }
 }
 
-void FileService::stop(void)
+void FileService::stop()
 {
     PION_LOG_DEBUG(m_logger, "Shutting down resource (" << get_resource() << ')');
     // clear cached files (if started again, it will re-scan)
-    pion::unique_lock<pion::mutex> cache_lock(m_cache_mutex);
+    std::unique_lock<std::mutex> cache_lock(m_cache_mutex);
     m_cache_map.clear();
 }
 
@@ -636,7 +636,7 @@ FileService::addCacheEntry(const std::string& relative_path,
                            const pion::filesystem::path& file_path,
                            const bool placeholder)
 {
-    DiskFile cache_entry(file_path, NULL, 0, 0, findMIMEType(file_path.filename().string()));
+    DiskFile cache_entry(file_path, nullptr, 0, 0, findMIMEType(file_path.filename().string()));
     if (! placeholder) {
         cache_entry.update();
         // only read the file if its size is <= max_cache_size
@@ -666,7 +666,7 @@ FileService::addCacheEntry(const std::string& relative_path,
 
 std::string FileService::findMIMEType(const std::string& file_name) {
     // initialize m_mime_types if it hasn't been done already
-    pion::call_once(m_mime_types_init_flag, FileService::createMIMETypes);
+    std::call_once(m_mime_types_init_flag, FileService::createMIMETypes);
 
     // determine the file's extension
     std::string extension(file_name.substr(file_name.find_last_of('.') + 1));
@@ -677,7 +677,7 @@ std::string FileService::findMIMEType(const std::string& file_name) {
     return (i == m_mime_types_ptr->end() ? DEFAULT_MIME_TYPE : i->second);
 }
 
-void FileService::createMIMETypes(void) {
+void FileService::createMIMETypes() {
     // create the map
     static MIMETypeMap mime_types;
 
@@ -707,7 +707,7 @@ void FileService::createMIMETypes(void) {
 
 // DiskFile member functions
 
-void DiskFile::update(void)
+void DiskFile::update()
 {
     // set file_size and last_modified
     m_file_size = (std::streamsize)(pion::filesystem::file_size( m_file_path ));
@@ -715,7 +715,7 @@ void DiskFile::update(void)
     m_last_modified_string = http::types::get_date_string( m_last_modified );
 }
 
-void DiskFile::read(void)
+void DiskFile::read()
 {
     // re-allocate storage buffer for the file's content
     m_file_content.reset( new char_array_owner( new char[m_file_size] ) );
@@ -731,7 +731,7 @@ void DiskFile::read(void)
     }
 }
 
-bool DiskFile::checkUpdated(void)
+bool DiskFile::checkUpdated()
 {
     // get current values
     std::streamsize cur_size = (std::streamsize)(pion::filesystem::file_size( m_file_path ));
@@ -761,7 +761,7 @@ DiskFileSender::DiskFileSender(DiskFile& file, const pion::http::request_ptr& ht
                                const pion::tcp::connection_ptr& tcp_conn,
                                unsigned long max_chunk_size)
     : m_logger(PION_GET_LOGGER("pion.FileService.DiskFileSender")), m_disk_file(file),
-    m_writer(pion::http::response_writer::create(tcp_conn, *http_request_ptr, pion::bind(&tcp::connection::finish, tcp_conn))),
+    m_writer(pion::http::response_writer::create(tcp_conn, *http_request_ptr, std::bind(&tcp::connection::finish, tcp_conn))),
     m_max_chunk_size(max_chunk_size), m_file_bytes_to_send(0), m_bytes_sent(0)
 {
     PION_LOG_DEBUG(m_logger, "Preparing to send file"
@@ -780,7 +780,7 @@ DiskFileSender::DiskFileSender(DiskFile& file, const pion::http::request_ptr& ht
     m_writer->get_response().set_status_message(http::types::RESPONSE_MESSAGE_OK);
 }
 
-void DiskFileSender::send(void)
+void DiskFileSender::send()
 {
     // check if we have nothing to send (send 0 byte response content)
     if (m_disk_file.getFileSize() <= m_bytes_sent) {
@@ -818,12 +818,12 @@ void DiskFileSender::send(void)
         // check if the content buffer was initialized yet
         if (! m_content_buf) {
             // allocate memory for the new content buffer
-            m_content_buf.reset(new char_array_owner( new char[m_file_bytes_to_send] ) );
+            m_content_buf.reset(new char[m_file_bytes_to_send]);
         }
-        file_content_ptr = m_content_buf.get()->ptr;
+        file_content_ptr = m_content_buf.get();
 
         // read a block of data from the file into the content buffer
-        if (! m_file_stream.read(m_content_buf.get()->ptr, m_file_bytes_to_send)) {
+        if (! m_file_stream.read(m_content_buf.get(), m_file_bytes_to_send)) {
             if (m_file_stream.gcount() > 0) {
                 PION_LOG_ERROR(m_logger, "File size inconsistency: "
                                << m_disk_file.getFilePath().string());
@@ -842,27 +842,27 @@ void DiskFileSender::send(void)
         // this is the last piece of data to send
         if (m_bytes_sent > 0) {
             // send last chunk in a series
-            m_writer->send_final_chunk(pion::bind(&DiskFileSender::handle_write,
+            m_writer->send_final_chunk(std::bind(&DiskFileSender::handle_write,
                                                  shared_from_this(),
-                                                 pion::placeholders::_1,
-                                                 pion::placeholders::_2));
+                                                 std::placeholders::_1,
+                                                 std::placeholders::_2));
         } else {
             // sending entire file at once
-            m_writer->send(pion::bind(&DiskFileSender::handle_write,
+            m_writer->send(std::bind(&DiskFileSender::handle_write,
                                        shared_from_this(),
-                                       pion::placeholders::_1,
-                                       pion::placeholders::_2));
+                                       std::placeholders::_1,
+                                       std::placeholders::_2));
         }
     } else {
         // there will be more data -> send a chunk
-        m_writer->send_chunk(pion::bind(&DiskFileSender::handle_write,
+        m_writer->send_chunk(std::bind(&DiskFileSender::handle_write,
                                         shared_from_this(),
-                                        pion::placeholders::_1,
-                                        pion::placeholders::_2));
+                                        std::placeholders::_1,
+                                        std::placeholders::_2));
     }
 }
 
-void DiskFileSender::handle_write(const pion::error_code& write_error,
+void DiskFileSender::handle_write(const std::error_code& write_error,
                                  std::size_t /* bytes_written */)
 {
     bool finished_sending = true;
@@ -908,7 +908,7 @@ void DiskFileSender::handle_write(const pion::error_code& write_error,
 
 
 /// creates new FileService objects
-extern "C" PION_PLUGIN pion::plugins::FileService *pion_create_FileService(void)
+extern "C" PION_PLUGIN pion::plugins::FileService *pion_create_FileService()
 {
     return new pion::plugins::FileService();
 }

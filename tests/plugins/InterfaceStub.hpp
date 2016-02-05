@@ -13,14 +13,14 @@
 
 ///
 /// Simple interface stub class for other unit test plugins
-/// 
+///
 class InterfaceStub
 {
 public:
-    InterfaceStub(void) {}
-    virtual ~InterfaceStub() {}
-    virtual void method(void) {}
-    virtual void const_method(void) const {}
+    InterfaceStub() = default;
+    virtual ~InterfaceStub() = default;
+    virtual void method() {}
+    virtual void const_method() const {}
 };
 
 #endif

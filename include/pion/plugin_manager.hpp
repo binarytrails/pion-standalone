@@ -13,12 +13,11 @@
 #include <pion/config.hpp>
 #include <map>
 #include <string>
-#include <pion/utils/pion_stdint.hpp>
-#include <pion/utils/pion_assert.hpp>
-#include <pion/utils/pion_functional.hpp>
-#include <pion/utils/pion_mutex.hpp>
+#include <functional>
+#include <mutex>
 #include <pion/error.hpp>
 #include <pion/plugin.hpp>
+#include <cassert>
 
 
 namespace pion {    // begin namespace pion
@@ -32,30 +31,30 @@ class plugin_manager
 public:
 
     /// data type for a function that may be called by the run() method
-    typedef pion::function<void (PluginType*)>    PluginRunFunction;
+    typedef std::function<void (PluginType*)>    PluginRunFunction;
 
     /// data type for a function that may be called by the getStat() method
-    typedef pion::function<pion::uint64_t (const PluginType*)>   PluginStatFunction;
+    typedef std::function<uint64_t (const PluginType*)>   PluginStatFunction;
 
-    
+
     /// default constructor
-    plugin_manager(void) {}
+    plugin_manager() = default;
 
     /// default destructor
-    virtual ~plugin_manager() {}
+    virtual ~plugin_manager() = default;
 
     /// clears all the plug-in objects being managed
-    inline void clear(void) {
-        pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    inline void clear() {
+        std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
         m_plugin_map.clear();
     }
-    
+
     /// returns true if there are no plug-in objects being managed
-    inline bool empty(void) const { 
-        pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    inline bool empty() const {
+        std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
         return m_plugin_map.empty();
     }
-    
+
     /**
      * adds a new plug-in object
      *
@@ -63,14 +62,14 @@ public:
      * @param plugin_object_ptr pointer to the plug-in object to add
      */
     inline void add(const std::string& plugin_id, PluginType *plugin_object_ptr);
-    
+
     /**
      * removes a plug-in object
      *
      * @param plugin_id unique identifier associated with the plug-in
      */
     inline void remove(const std::string& plugin_id);
-    
+
     /**
      * replaces an existing plug-in object with a new one
      *
@@ -78,7 +77,7 @@ public:
      * @param plugin_ptr pointer to the new plug-in object which will replace the old one
      */
     inline void replace(const std::string& plugin_id, PluginType *plugin_ptr);
-    
+
     /**
      * clones an existing plug-in object (creates a new one of the same type)
      *
@@ -96,23 +95,23 @@ public:
      * @return PluginType* pointer to the new plug-in object
      */
     inline PluginType *load(const std::string& plugin_id, const std::string& plugin_type);
-    
+
     /**
      * gets the plug-in object associated with a particular plugin_id (exact match)
      *
      * @param plugin_id unique identifier associated with the plug-in
-     * @return PluginType* pointer to the matching plug-in object or NULL if not found
+     * @return PluginType* pointer to the matching plug-in object or nullptr if not found
      */
     inline PluginType *get(const std::string& plugin_id);
-    
+
     /**
      * gets the plug-in object associated with a particular plugin_id (exact match)
      *
      * @param plugin_id unique identifier associated with the plug-in
-     * @return PluginType* pointer to the matching plug-in object or NULL if not found
+     * @return PluginType* pointer to the matching plug-in object or nullptr if not found
      */
     inline const PluginType *get(const std::string& plugin_id) const;
-    
+
     /**
      * gets a smart pointer to the plugin shared library for a particular plugin_id (exact match)
      *
@@ -120,22 +119,22 @@ public:
      * @return plugin_ptr<PluginType> pointer to the plugin shared library if found
      */
     inline plugin_ptr<PluginType> get_lib_ptr(const std::string& plugin_id) const;
-    
+
     /**
      * finds the plug-in object associated with a particular resource (fuzzy match)
      *
      * @param resource resource identifier (uri-stem) to search for
-     * @return PluginType* pointer to the matching plug-in object or NULL if not found
+     * @return PluginType* pointer to the matching plug-in object or nullptr if not found
      */
     inline PluginType *find(const std::string& resource);
-    
+
     /**
      * runs a method for every plug-in being managed
      *
      * @param run_func the function to execute for each plug-in object
      */
     inline void run(PluginRunFunction run_func);
-    
+
     /**
      * runs a method for a particular plug-in
      *
@@ -143,44 +142,44 @@ public:
      * @param run_func the function to execute
      */
     inline void run(const std::string& plugin_id, PluginRunFunction run_func);
-    
+
     /**
      * returns a total statistic value summed for every plug-in being managed
      *
      * @param stat_func the statistic function to execute for each plug-in object
      */
-    inline pion::uint64_t get_statistic(PluginStatFunction stat_func) const;
-    
+    inline uint64_t get_statistic(PluginStatFunction stat_func) const;
+
     /**
      * returns a statistic value for a particular plug-in
      *
      * @param plugin_id unique identifier associated with the plug-in
      * @param stat_func the statistic function to execute
      */
-    inline pion::uint64_t get_statistic(const std::string& plugin_id,
+    inline uint64_t get_statistic(const std::string& plugin_id,
                                         PluginStatFunction stat_func) const;
-        
-    
+
+
 protected:
-    
+
     /// data type that maps identifiers to plug-in objects
     class map_type
         : public std::map<std::string, std::pair<PluginType *, plugin_ptr<PluginType> > >
     {
     public:
-        inline void clear(void);
+        inline void clear();
         virtual ~map_type() { map_type::clear(); }
-        map_type(void) {}
+        map_type() = default;
     };
-    
+
     /// collection of plug-in objects being managed
     map_type                m_plugin_map;
 
     /// mutex to make class thread-safe
-    mutable pion::mutex    m_plugin_mutex;
+    mutable std::mutex    m_plugin_mutex;
 };
 
-    
+
 // plugin_manager member functions
 
 template <typename PluginType>
@@ -188,7 +187,7 @@ inline void plugin_manager<PluginType>::add(const std::string& plugin_id,
                                             PluginType *plugin_object_ptr)
 {
     plugin_ptr<PluginType> plugin_ptr;
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     m_plugin_map.insert(std::make_pair(plugin_id,
                                        std::make_pair(plugin_object_ptr, plugin_ptr)));
 }
@@ -196,7 +195,7 @@ inline void plugin_manager<PluginType>::add(const std::string& plugin_id,
 template <typename PluginType>
 inline void plugin_manager<PluginType>::remove(const std::string& plugin_id)
 {
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     typename pion::plugin_manager<PluginType>::map_type::iterator i = m_plugin_map.find(plugin_id);
     if (i == m_plugin_map.end())
         PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_id) );
@@ -211,8 +210,8 @@ inline void plugin_manager<PluginType>::remove(const std::string& plugin_id)
 template <typename PluginType>
 inline void plugin_manager<PluginType>::replace(const std::string& plugin_id, PluginType *plugin_ptr)
 {
-    PION_ASSERT(plugin_ptr);
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    assert(plugin_ptr);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     typename pion::plugin_manager<PluginType>::map_type::iterator i = m_plugin_map.find(plugin_id);
     if (i == m_plugin_map.end())
         PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_id) );
@@ -227,7 +226,7 @@ inline void plugin_manager<PluginType>::replace(const std::string& plugin_id, Pl
 template <typename PluginType>
 inline PluginType *plugin_manager<PluginType>::clone(const std::string& plugin_id)
 {
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     typename pion::plugin_manager<PluginType>::map_type::iterator i = m_plugin_map.find(plugin_id);
     if (i == m_plugin_map.end())
         PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_id) );
@@ -241,16 +240,16 @@ inline PluginType *plugin_manager<PluginType>::load(const std::string& plugin_id
     // search for the plug-in file using the configured paths
     if (m_plugin_map.find(plugin_id) != m_plugin_map.end())
         PION_THROW_EXCEPTION( error::duplicate_plugin() << error::errinfo_plugin_name(plugin_id) );
-    
+
     // open up the plug-in's shared object library
     plugin_ptr<PluginType> plugin_ptr;
     plugin_ptr.open(plugin_type);   // may throw
-    
+
     // create a new object using the plug-in library
     PluginType *plugin_object_ptr(plugin_ptr.create());
-    
+
     // add the new plug-in object to our map
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     m_plugin_map.insert(std::make_pair(plugin_id,
                                        std::make_pair(plugin_object_ptr, plugin_ptr)));
 
@@ -260,53 +259,53 @@ inline PluginType *plugin_manager<PluginType>::load(const std::string& plugin_id
 template <typename PluginType>
 inline PluginType *plugin_manager<PluginType>::get(const std::string& plugin_id)
 {
-    PluginType *plugin_object_ptr = NULL;
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    PluginType *plugin_object_ptr = nullptr;
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     typename pion::plugin_manager<PluginType>::map_type::iterator i = m_plugin_map.find(plugin_id);
     if (i != m_plugin_map.end())
         plugin_object_ptr = i->second.first;
     return plugin_object_ptr;
 }
-    
+
 template <typename PluginType>
 inline const PluginType *plugin_manager<PluginType>::get(const std::string& plugin_id) const
 {
-    const PluginType *plugin_object_ptr = NULL;
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    const PluginType *plugin_object_ptr = nullptr;
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     typename pion::plugin_manager<PluginType>::map_type::const_iterator i = m_plugin_map.find(plugin_id);
     if (i != m_plugin_map.end())
         plugin_object_ptr = i->second.first;
     return plugin_object_ptr;
 }
-    
+
 template <typename PluginType>
 inline plugin_ptr<PluginType> plugin_manager<PluginType>::get_lib_ptr(const std::string& plugin_id) const
 {
     plugin_ptr<PluginType> plugin_ptr;
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     typename pion::plugin_manager<PluginType>::map_type::const_iterator i = m_plugin_map.find(plugin_id);
     if (i != m_plugin_map.end())
         plugin_ptr = i->second.second;
     return plugin_ptr;
-}       
+}
 
 template <typename PluginType>
 inline PluginType *plugin_manager<PluginType>::find(const std::string& resource)
 {
     // will point to the matching plug-in object, if found
-    PluginType *plugin_object_ptr = NULL;
-    
+    PluginType *plugin_object_ptr = nullptr;
+
     // lock mutex for thread safety (this should probably use ref counters)
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
-    
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
+
     // check if no plug-ins are being managed
     if (m_plugin_map.empty()) return plugin_object_ptr;
-    
+
     // iterate through each plug-in whose identifier may match the resource
     typename pion::plugin_manager<PluginType>::map_type::iterator i = m_plugin_map.upper_bound(resource);
     while (i != m_plugin_map.begin()) {
         --i;
-        
+
         // keep checking while the first part of the strings match
         if (resource.compare(0, i->first.size(), i->first) != 0) {
             // the first part no longer matches
@@ -320,7 +319,7 @@ inline PluginType *plugin_manager<PluginType>::find(const std::string& resource)
             // otherwise we've reached the end; stop looking for a match
             break;
         }
-        
+
         // only if the resource matches the plug-in's identifier
         // or if resource is followed first with a '/' character
         if (resource.size() == i->first.size() || resource[i->first.size()]=='/') {
@@ -328,14 +327,14 @@ inline PluginType *plugin_manager<PluginType>::find(const std::string& resource)
             break;
         }
     }
-    
+
     return plugin_object_ptr;
 }
-    
+
 template <typename PluginType>
 inline void plugin_manager<PluginType>::run(PluginRunFunction run_func)
 {
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     for (typename pion::plugin_manager<PluginType>::map_type::iterator i = m_plugin_map.begin();
          i != m_plugin_map.end(); ++i)
     {
@@ -349,16 +348,16 @@ inline void plugin_manager<PluginType>::run(const std::string& plugin_id,
 {
     // no need to lock (handled by plugin_manager::get())
     PluginType *plugin_object_ptr = get(plugin_id);
-    if (plugin_object_ptr == NULL)
+    if (plugin_object_ptr == nullptr)
         PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_id) );
     run_func(plugin_object_ptr);
 }
 
 template <typename PluginType>
-inline pion::uint64_t plugin_manager<PluginType>::get_statistic(PluginStatFunction stat_func) const
+inline uint64_t plugin_manager<PluginType>::get_statistic(PluginStatFunction stat_func) const
 {
-    pion::uint64_t stat_value = 0;
-    pion::unique_lock<pion::mutex> plugins_lock(m_plugin_mutex);
+    uint64_t stat_value = 0;
+    std::unique_lock<std::mutex> plugins_lock(m_plugin_mutex);
     for (typename pion::plugin_manager<PluginType>::map_type::const_iterator i = m_plugin_map.begin();
          i != m_plugin_map.end(); ++i)
     {
@@ -368,12 +367,12 @@ inline pion::uint64_t plugin_manager<PluginType>::get_statistic(PluginStatFuncti
 }
 
 template <typename PluginType>
-inline pion::uint64_t plugin_manager<PluginType>::get_statistic(const std::string& plugin_id,
+inline uint64_t plugin_manager<PluginType>::get_statistic(const std::string& plugin_id,
                                                                 PluginStatFunction stat_func) const
 {
     // no need to lock (handled by plugin_manager::get())
     const PluginType *plugin_object_ptr = const_cast<plugin_manager<PluginType>*>(this)->get(plugin_id);
-    if (plugin_object_ptr == NULL)
+    if (plugin_object_ptr == nullptr)
         PION_THROW_EXCEPTION( error::plugin_not_found() << error::errinfo_plugin_name(plugin_id) );
     return stat_func(plugin_object_ptr);
 }
@@ -382,7 +381,7 @@ inline pion::uint64_t plugin_manager<PluginType>::get_statistic(const std::strin
 // plugin_manager::map_type member functions
 
 template <typename PluginType>
-inline void plugin_manager<PluginType>::map_type::clear(void)
+inline void plugin_manager<PluginType>::map_type::clear()
 {
     if (! std::map<std::string, std::pair<PluginType *, plugin_ptr<PluginType> > >::empty()) {
         for (typename pion::plugin_manager<PluginType>::map_type::iterator i =

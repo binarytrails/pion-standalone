@@ -14,8 +14,8 @@
 #include <fstream>
 #include <boost/version.hpp>
 #include <boost/algorithm/string.hpp>
-#include <pion/pion_mutex.hpp>
-#include <pion/pion_condition_variable.hpp>
+#include <mutex>
+#include <condition_variable>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_log.hpp>
 #include <boost/test/unit_test_log_formatter.hpp>
@@ -38,34 +38,34 @@
 
 namespace pion {    // begin namespace pion
 namespace test {    // begin namespace test
-    
+
     /// thread-safe version of Boost.Test's xml_log_formatter class
     class safe_xml_log_formatter
         : public boost::unit_test::unit_test_log_formatter
     {
     public:
-        
+
         /// default constructor
         safe_xml_log_formatter()
             : m_entry_in_progress(false)
         {}
-        
+
         /// virtual destructor
-        virtual ~safe_xml_log_formatter() {}
-    
+        virtual ~safe_xml_log_formatter() = default;
+
         /// wrapper to flush output for xml_log_formatter::log_start
         virtual void log_start(std::ostream& ostr,
                                boost::unit_test::counter_t /* test_cases_amount */)
         {
             ostr << "<TestLog>" << std::endl;
         }
-    
+
         /// wrapper to flush output for xml_log_formatter::log_finish
         virtual void log_finish(std::ostream& ostr)
         {
             ostr << "</TestLog>" << std::endl;
         }
-    
+
         /// wrapper to flush output for xml_log_formatter::log_build_info
         virtual void log_build_info(std::ostream& ostr)
         {
@@ -78,14 +78,14 @@ namespace test {    // begin namespace test
                 << BOOST_VERSION % 100      << '\"'
                 << "/>" << std::endl;
         }
-    
+
         /// wrapper to flush output for xml_log_formatter::test_unit_start
         virtual void test_unit_start(std::ostream& ostr,
                                      boost::unit_test::test_unit const& tu )
         {
             ostr << "<" << tu_type_name( tu ) << " name" << attr_value() << tu.p_name.get() << ">" << std::endl;
         }
-    
+
         /// wrapper to flush output for xml_log_formatter::test_unit_finish
         virtual void test_unit_finish(std::ostream& ostr,
                                       boost::unit_test::test_unit const& tu,
@@ -95,7 +95,7 @@ namespace test {    // begin namespace test
                 ostr << "<TestingTime>" << elapsed << "</TestingTime>";
             ostr << "</" << tu_type_name( tu ) << ">" << std::endl;
         }
-    
+
         /// wrapper to flush output for xml_log_formatter::test_unit_skipped
         virtual void test_unit_skipped(std::ostream& ostr,
                                        boost::unit_test::test_unit const& tu )
@@ -105,22 +105,22 @@ namespace test {    // begin namespace test
                 << " skipped" << attr_value() << "yes"
                 << "/>" << std::endl;
         }
-    
+
         /// wrapper to flush output for xml_log_formatter::log_exception
         virtual void log_exception(std::ostream& ostr,
                                    boost::unit_test::log_checkpoint_data const& checkpoint_data,
                                    boost::execution_exception const& ex )
         {
             boost::execution_exception::location const& loc = ex.where();
-            
+
             ostr << "<Exception file" << attr_value() << loc.m_file_name
                 << " line" << attr_value() << loc.m_line_num;
-            
+
             if( !loc.m_function.is_empty() )
                 ostr << " function"   << attr_value() << loc.m_function;
-            
+
             ostr << ">" << boost::unit_test::cdata() << ex.what();
-            
+
             if( !checkpoint_data.m_file_name.is_empty() ) {
                 ostr << "<LastCheckpoint file" << attr_value() << checkpoint_data.m_file_name
                     << " line"                << attr_value() << checkpoint_data.m_line_num
@@ -128,21 +128,21 @@ namespace test {    // begin namespace test
                     << boost::unit_test::cdata() << checkpoint_data.m_message
                     << "</LastCheckpoint>";
             }
-            
+
             ostr << "</Exception>" << std::endl;
         }
-    
+
         /// thread-safe wrapper for xml_log_formatter::log_entry_start
         virtual void log_entry_start( std::ostream& ostr,
                                      boost::unit_test::log_entry_data const& entry_data,
                                      log_entry_types let )
         {
-            pion::unique_lock<pion::mutex> entry_lock(m_mutex);
+            std::unique_lock<std::mutex> entry_lock(m_mutex);
             while (m_entry_in_progress) {
                 m_entry_complete.wait(entry_lock);
             }
             m_entry_in_progress = true;
-            
+
             static boost::unit_test::literal_string xml_tags[] = { "Info", "Message", "Warning", "Error", "FatalError" };
             m_curr_tag = xml_tags[let];
             ostr << '<' << m_curr_tag
@@ -152,23 +152,23 @@ namespace test {    // begin namespace test
 
             ostr.flush();
         }
-    
+
         /// thread-safe wrapper for xml_log_formatter::log_entry_value
         /// ensures that an entry is in progress
         virtual void log_entry_value( std::ostream& ostr, boost::unit_test::const_string value )
         {
-            pion::unique_lock<pion::mutex> entry_lock(m_mutex);
+            std::unique_lock<std::mutex> entry_lock(m_mutex);
             if (m_entry_in_progress) {
                 ostr << value;
                 ostr.flush();
             }
         }
-        
+
         /// thread-safe wrapper for xml_log_formatter::log_entry_finish
         /// assumes the current thread has control via call to log_entry_start()
         virtual void log_entry_finish( std::ostream& ostr )
         {
-            pion::unique_lock<pion::mutex> entry_lock(m_mutex);
+            std::unique_lock<std::mutex> entry_lock(m_mutex);
             if (m_entry_in_progress) {
                 ostr << BOOST_TEST_L( "]]></" ) << m_curr_tag << BOOST_TEST_L( ">" ) << std::endl;
                 m_curr_tag.clear();
@@ -176,7 +176,7 @@ namespace test {    // begin namespace test
                 m_entry_complete.notify_all();
             }
         }
-        
+
     private:
 
         /// output appropriate xml element name
@@ -184,25 +184,25 @@ namespace test {    // begin namespace test
         {
             return tu.p_type == boost::unit_test::tut_case ? "TestCase" : "TestSuite";
         }
-        
+
         /// re-use attr_value data type from xml_printer.hpp
         typedef boost::unit_test::attr_value    attr_value;
-        
+
         /// true if a log entry is in progress
         volatile bool       m_entry_in_progress;
-        
+
         /// condition used to signal the completion of a log entry
-        pion::condition_variable    m_entry_complete;
-        
+        std::condition_variable    m_entry_complete;
+
         /// mutex used to prevent multiple threads from interleaving entries
-        pion::mutex        m_mutex;
+        std::mutex        m_mutex;
 
         /// current xml tag
         boost::unit_test::const_string  m_curr_tag;
     };
-    
-    
-    /// config is intended for use as a global fixture.  By including the 
+
+
+    /// config is intended for use as a global fixture.  By including the
     /// following line in one source code file of a unit test project, the constructor will
     /// run once before the first test and the destructor will run once after the last test:
     ///
@@ -210,7 +210,7 @@ namespace test {    // begin namespace test
     struct config {
         config() {
             std::cout << "global setup for all pion unit tests\n";
-            
+
             // argc and argv do not include parameters handled by the boost unit test framework, such as --log_level.
             int argc = boost::unit_test::framework::master_test_suite().argc;
             char** argv = boost::unit_test::framework::master_test_suite().argv;
@@ -230,7 +230,7 @@ namespace test {    // begin namespace test
                     }
                 }
             }
-    
+
             if (verbose) {
                 PION_LOG_CONFIG_BASIC;
             } else {
@@ -247,7 +247,7 @@ namespace test {    // begin namespace test
         /// xml log results output stream (needs to be global)
         static std::ofstream    m_test_log_file;
     };
-    
+
 
     // removes line endings from a c-style string
     static inline char* trim(char* str) {
@@ -354,19 +354,19 @@ namespace test {    // begin namespace test
 
 /*
 Using BOOST_AUTO_TEST_SUITE_FIXTURE_TEMPLATE and
-BOOST_AUTO_TEST_CASE_FIXTURE_TEMPLATE has two additional benefits relative to 
+BOOST_AUTO_TEST_CASE_FIXTURE_TEMPLATE has two additional benefits relative to
 using BOOST_FIXTURE_TEST_SUITE and BOOST_AUTO_TEST_CASE:
 1) it allows a test to be run with more than one fixture, and
-2) it makes the current fixture part of the test name, e.g. 
+2) it makes the current fixture part of the test name, e.g.
    checkPropertyX<myFixture_F>
 
 For an example of 1), see http_message_tests.cpp.
 
 There are probably simpler ways to achieve 2), but since it comes for free,
 it makes sense to use it.  The benefit of this is that the test names don't
-have to include redundant information about the fixture, e.g. 
-checkMyFixtureHasPropertyX.  (In this example, checkPropertyX<myFixture_F> is 
-not obviously better than checkMyFixtureHasPropertyX, but in many cases the 
+have to include redundant information about the fixture, e.g.
+checkMyFixtureHasPropertyX.  (In this example, checkPropertyX<myFixture_F> is
+not obviously better than checkMyFixtureHasPropertyX, but in many cases the
 test names become too long and/or hard to parse, or the fixture just isn't
 part of the name, making some error reports ambiguous.)
 

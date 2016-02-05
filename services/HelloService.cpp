@@ -15,7 +15,7 @@ using namespace pion;
 namespace pion {        // begin namespace pion
 namespace plugins {     // begin namespace plugins
 
-    
+
 // HelloService member functions
 
 /// handles requests for HelloService
@@ -23,7 +23,7 @@ void HelloService::operator()(const http::request_ptr& http_request_ptr, const t
 {
     static const std::string HELLO_HTML = "<html><body>Hello World!</body></html>";
     http::response_writer_ptr writer(http::response_writer::create(tcp_conn, *http_request_ptr,
-                                                            pion::bind(&tcp::connection::finish, tcp_conn)));
+                                                            std::bind(&tcp::connection::finish, tcp_conn)));
     writer->write_no_copy(HELLO_HTML);
     writer->write_no_copy(http::types::STRING_CRLF);
     writer->write_no_copy(http::types::STRING_CRLF);
@@ -36,7 +36,7 @@ void HelloService::operator()(const http::request_ptr& http_request_ptr, const t
 
 
 /// creates new HelloService objects
-extern "C" PION_PLUGIN pion::plugins::HelloService *pion_create_HelloService(void)
+extern "C" PION_PLUGIN pion::plugins::HelloService *pion_create_HelloService()
 {
     return new pion::plugins::HelloService();
 }

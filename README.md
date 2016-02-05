@@ -4,17 +4,11 @@ Pion **Standalone** Network Library
 Fork of pion (https://github.com/splunk/pion.git) that does **not**
 requires boost at all.
 
-It still compiles with boost:
  - feature complete
- - support for some older version of boost has been removed
- - requires support for boost::function<> preferred syntax
- - all boost calls has been encapsulated in pion/utils
-
-In standalone mode:
  - no need of boost
  - requires C++11
  - requires asio standalone
- - tests still uses boost::test, so compile with --disable-tests
+ - tests still uses boost::test
 
 todo:
  - windows support
