@@ -2,8 +2,6 @@
 #include <pion/config.hpp>
 #include <pion/utils/pion_filesystem.hpp>
 
-#ifdef ASIO_STANDALONE
-
 #ifdef PION_WIN32
 #else
 #include <unistd.h>
@@ -315,34 +313,8 @@ std::string filesystem_path( const filesystem::path &i_path )
 
 }
 
-#else
-
-namespace pion
+std::ostream &operator<<( std::ostream &ostr, const pion::filesystem::path &i_path )
 {
-
-std::vector<boost::filesystem::path> get_dir_content( const boost::filesystem::path &i_path )
-{
-	std::vector<boost::filesystem::path> result;
-	
-	boost::filesystem::directory_iterator end;
-	for ( boost::filesystem::directory_iterator it( i_path ); it != end; ++it )
-		result.push_back( *it );
-
-	return result;
+	ostr << i_path.string();
+	return ostr;
 }
-
-#ifdef PION_WIN32
-std::wstring filesystem_path( const filesystem::path &i_path )
-{
-#error
-}
-#else
-std::string filesystem_path( const filesystem::path &i_path )
-{
-	return i_path.string();
-}
-#endif
-
-}
-
-#endif

@@ -8,6 +8,7 @@
 //
 
 #include <pion/scheduler.hpp>
+#include <pion/utils/pion_exception.hpp>
 
 namespace pion {    // begin namespace pion
 

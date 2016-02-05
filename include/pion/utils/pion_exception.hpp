@@ -3,6 +3,8 @@
 #define H_PION_EXCEPTION
 
 #include <memory>
+#include <string>
+#include <stdexcept>
 
 namespace pion
 {
@@ -43,6 +45,8 @@ typename T::value_type *get_error_info( const exception_base & )
 {
 	return nullptr;
 }
+
+std::string diagnostic_information( const std::exception &ex );
 
 }
 
