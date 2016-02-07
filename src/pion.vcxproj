@@ -284,12 +284,14 @@
     <ClCompile Include="spdy_decompressor.cpp" />
     <ClCompile Include="spdy_parser.cpp" />
     <ClCompile Include="tcp_server.cpp" />
+    <ClCompile Include="pion_exception.cpp" />
     <ClCompile Include="pion_filesystem.cpp" />
     <ClCompile Include="tcp_timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\pion\utils\pion_asio.hpp" />
     <ClInclude Include="..\include\pion\utils\pion_exception.hpp" />
+    <ClInclude Include="..\include\pion\utils\pion_circular_buffer.hpp" />
     <ClInclude Include="..\include\pion\utils\pion_filesystem.hpp" />
     <ClInclude Include="..\include\pion\utils\pion_string.hpp" />
     <ClInclude Include="..\include\pion\utils\pion_tribool.hpp" />

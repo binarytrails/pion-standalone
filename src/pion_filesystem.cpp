@@ -312,3 +312,9 @@ std::string filesystem_path( const filesystem::path &i_path )
 #endif
 
 }
+
+std::ostream &operator<<( std::ostream &ostr, const pion::filesystem::path &i_path )
+{
+	ostr << i_path.string();
+	return ostr;
+}

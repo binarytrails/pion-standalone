@@ -63,6 +63,9 @@
     <ClCompile Include="tcp_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pion_exception.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="pion_filesystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\pion\utils\pion_exception.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\pion\utils\pion_circular_buffer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\pion\utils\pion_filesystem.hpp">

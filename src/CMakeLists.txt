@@ -62,6 +62,7 @@ source_group("include\\pion" FILES ${COMMON_HDR_FILES})
 
 set(UTILS_HDR_FILES
     ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_exception.hpp
+    ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_circular_buffer.hpp
     ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_filesystem.hpp
     ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_string.hpp
     ${PROJECT_WIDE_INCLUDE}/pion/utils/pion_tribool.hpp
@@ -87,6 +88,7 @@ set(SRC_FILES
     ${PROJECT_SOURCE_DIR}/process.cpp
     ${PROJECT_SOURCE_DIR}/scheduler.cpp
     ${PROJECT_SOURCE_DIR}/tcp_server.cpp
+    ${PROJECT_SOURCE_DIR}/pion_exception.cpp
     ${PROJECT_SOURCE_DIR}/pion_filesystem.cpp
     ${PROJECT_SOURCE_DIR}/tcp_timer.cpp
     ${PROJECT_SOURCE_DIR}/pion_filesystem.cpp
