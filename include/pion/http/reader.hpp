@@ -17,10 +17,13 @@
 #include <pion/tcp/connection.hpp>
 #include <pion/tcp/timer.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
-
 
 ///
 /// reader: asynchronously reads and parses HTTP messages
@@ -106,8 +109,11 @@ private:
     uint32_t                         m_read_timeout;
 };
 
-
 }   // end namespace http
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

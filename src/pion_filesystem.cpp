@@ -16,7 +16,7 @@ namespace
 bool is_separator( char c )
 {
 #ifdef PION_WIN32
-	return c == '/' or c == '\\';
+	return c == '/' || c == '\\';
 #else
 	return c == '/';
 #endif
@@ -114,13 +114,13 @@ path &path::operator/=( const path &i_comp )
 {
 	if ( i_comp.string().empty() )
 		return *this;
-	if ( not is_separator( i_comp.string().front() ) )
+	if ( ! is_separator( i_comp.string().front() ) )
 	{
-		if ( not _path.empty() and
+		if ( ! _path.empty() and
 #ifdef PION_WIN32
-				_path.back() != ':' and
+				_path.back() != ':' &&
 #endif
-				not is_separator( _path.back() ) )
+				! is_separator( _path.back() ) )
 		{
 			_path += preferred_separator;
 		}

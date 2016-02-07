@@ -15,6 +15,10 @@
 #include <string>
 #include <pion/http/auth.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
@@ -101,8 +105,11 @@ private:
     mutable std::mutex        m_cache_mutex;
 };
 
-
 }   // end namespace http
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

@@ -18,10 +18,13 @@
 #include <pion/http/request.hpp>
 #include <pion/http/response.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
-
 
 ///
 /// response_writer: used to asynchronously send HTTP responses
@@ -189,5 +192,9 @@ inline response_writer_ptr& operator<<(response_writer_ptr& writer, std::ostream
 
 }   // end namespace http
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

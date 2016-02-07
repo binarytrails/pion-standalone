@@ -20,6 +20,11 @@
 #include <pion/logger.hpp>
 #include <pion/http/message.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
+
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
 
@@ -738,5 +743,9 @@ inline bool parser::is_cookie_attribute(const std::string& name, bool set_cookie
 
 }   // end namespace http
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

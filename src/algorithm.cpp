@@ -14,6 +14,7 @@
 #include <pion/algorithm.hpp>
 #include <pion/utils/pion_string.hpp>
 #include <pion/utils/pion_tribool.hpp>
+#include <cctype>
 #include <cassert>
 
 // macro to shift bitmask by a single bit
@@ -397,7 +398,7 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
     // note: we should have a zero exponent if value == 0
     int32_t high_bit = (int32_t)(::pow((long double)2, (int)(num_exp_bits - 1)));
     if (got_exponent)
-        exponent += (high_bit - 1);
+        exponent += int16_t(high_bit - 1);
     else
         exponent = 0;
 
@@ -408,7 +409,7 @@ void algorithm::float_to_bytes(long double value, unsigned char *buf, size_t num
         SHIFT_BITMASK(ptr, mask);
         if (exponent >= high_bit) {
             *ptr |= mask;
-            exponent -= high_bit;
+            exponent -= int16_t(high_bit);
         }
         high_bit /= 2;
     }
@@ -447,7 +448,7 @@ std::string to_lower( const std::string &i_s )
 void to_lower( std::string &i_s )
 {
 	for ( auto &c : i_s )
-		c = std::tolower( c );
+		c = (char)std::tolower( c );
 }
 
 bool iequals( const std::string &a, const std::string &b, const std::locale & )

@@ -864,7 +864,7 @@ bool parser::parse_uri(const std::string& uri, std::string& proto,
     // parse the port, if it's not empty
     if(port_pos != std::string::npos) {
         try {
-            port = std::stoi(t.substr(port_pos+1));
+            port = (uint16_t)std::stoi(t.substr(port_pos+1));
         } catch ( ... ) {
             return false;
         }

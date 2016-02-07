@@ -23,10 +23,13 @@
 #include <pion/http/auth.hpp>
 #include <pion/http/parser.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 namespace http {    // begin namespace http
-
 
 ///
 /// server: a server that handles HTTP connections
@@ -291,8 +294,11 @@ private:
 /// data type for a HTTP server pointer
 typedef std::shared_ptr<server>	server_ptr;
 
-
 }   // end namespace http
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

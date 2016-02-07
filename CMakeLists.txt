@@ -78,16 +78,16 @@ include_directories(${PROJECT_WIDE_INCLUDE})
 find_package(Threads REQUIRED)
 
 # TODO: need to handle this with option
-#set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_MULTITHREADED ON)
 #set(Boost_USE_STATIC_LIBS ON)
 #set(Boost_USE_STATIC_RUNTIME OFF)
 
-find_package(Boost COMPONENTS unit_test_framework REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework)
 if (Boost_FOUND)
     # disable autolinking feature
     add_definitions(-DBOOST_ALL_NO_LIB)
     include_directories(${Boost_INCLUDE_DIRS})
-else()
+elseif(BUILD_UT)
     message(FATAL_ERROR "Boost >= 1.35 required to build Pion")
 endif()
 
@@ -121,6 +121,8 @@ if(ASIO_FOUND)
 else()
 	message(FATAL_ERROR "ASIO standalone is required to build Pion")
 endif()
+add_definitions(-DASIO_STANDALONE)
+
 
 if(USE_LOG4CPLUS)
     set(Log4Cplus_USE_STATIC_LIBS 1)

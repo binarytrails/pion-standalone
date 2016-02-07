@@ -17,6 +17,9 @@
     #include <fcntl.h>
     #include <unistd.h>
     #include <sys/stat.h>
+#else
+#include <sstream>
+#include <iomanip>
 #endif
 
 #include <pion/utils/pion_filesystem.hpp>
@@ -137,11 +140,11 @@ std::string process::generate_dumpfile_name()
     config_type& cfg = get_config();
 
     // generate file name based on current timestamp
+		auto now = std::chrono::system_clock::now();
+		auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-    static std::locale loc(std::cout.getloc(), new time_facet("%Y%m%d_%H%M%S"));
-    std::stringstream ss;
-    ss.imbue(loc);
-    ss << second_clock::universal_time() << ".dmp";
+		std::stringstream ss;
+		ss << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".dmp";
 
     // build the full path
     pion::filesystem::path p(pion::filesystem::system_complete(cfg.dumpfile_dir));

@@ -16,6 +16,11 @@
 #include <mutex>
 #include <condition_variable>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
+
 // Dump file generation support on Windows
 #ifdef PION_WIN32
 #include <windows.h>
@@ -136,7 +141,10 @@ private:
     static config_type *          m_config_ptr;
 };
 
-
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

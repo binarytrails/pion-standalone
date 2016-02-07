@@ -20,10 +20,13 @@
 #include <pion/scheduler.hpp>
 #include <pion/tcp/connection.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 namespace tcp {     // begin namespace tcp
-
 
 ///
 /// tcp::server: a multi-threaded, asynchronous TCP server
@@ -63,7 +66,7 @@ public:
     inline unsigned int get_port() const { return m_endpoint.port(); }
 
     /// sets tcp port number that the server listens for connections on
-    inline void set_port(unsigned int p) { m_endpoint.port(p); }
+    inline void set_port(unsigned int p) { m_endpoint.port((unsigned short)p); }
 
     /// returns IP address that the server listens for connections on
     inline asio::ip::address get_address() const { return m_endpoint.address(); }
@@ -238,8 +241,11 @@ private:
 /// data type for a server pointer
 typedef std::shared_ptr<server>    server_ptr;
 
-
 }   // end namespace tcp
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

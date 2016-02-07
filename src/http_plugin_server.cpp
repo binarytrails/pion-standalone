@@ -86,7 +86,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 // first char in command
                 parse_state = PARSE_COMMAND;
                 // ignore case for commands
-                command_string += tolower(c);
+                command_string += (char)tolower(c);
             } else if (c != '\r' && c != '\n') {    // check for blank lines
                 PION_THROW_EXCEPTION( error::bad_config() << error::errinfo_file_name(config_name) );
             }
@@ -113,7 +113,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 PION_THROW_EXCEPTION( error::bad_config() << error::errinfo_file_name(config_name) );
             } else {
                 // ignore case for commands
-                command_string += tolower(c);
+                command_string += (char)tolower(c);
             }
             break;
 
@@ -131,7 +131,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 PION_THROW_EXCEPTION( error::bad_config() << error::errinfo_file_name(config_name) );
             } else {
                 // add char to resource
-                resource_string += c;
+                resource_string += (char)c;
             }
             break;
 
@@ -149,7 +149,7 @@ void plugin_server::load_service_config(const std::string& config_name)
                 PION_THROW_EXCEPTION( error::bad_config() << error::errinfo_file_name(config_name) );
             } else {
                 // add char to username
-                username_string += c;
+                username_string += (char)c;
             }
             break;
 
@@ -215,10 +215,10 @@ void plugin_server::load_service_config(const std::string& config_name)
             } else if (c == ' ' || c == '\t') {
                 // only skip leading whitespace (value may contain spaces, etc)
                 if (! value_string.empty())
-                    value_string += c;
+                    value_string += (char)c;
             } else {
                 // add char to value
-                value_string += c;
+                value_string += (char)c;
             }
             break;
 

@@ -25,20 +25,6 @@
 #cmakedefine PION_HAVE_MALLOC_TRIM ${PION_HAVE_MALLOC_TRIM}
 
 // -----------------------------------------------------------------------
-// hash_map support
-//
-// At least one of the following options should be defined.
-
-/* Define to 1 if you have the <ext/hash_map> header file. */
-#cmakedefine PION_HAVE_EXT_HASH_MAP ${PION_HAVE_EXT_HASH_MAP}
-
-/* Define to 1 if you have the <hash_map> header file. */
-#cmakedefine PION_HAVE_HASH_MAP ${PION_HAVE_HASH_MAP}
-
-/* Define to 1 if you have the <unordered_map> header file. */
-#cmakedefine PION_HAVE_UNORDERED_MAP ${PION_HAVE_UNORDERED_MAP}
-
-// -----------------------------------------------------------------------
 // Logging Options
 //
 // At most one of the logging options below should be defined.  If none of 
@@ -74,8 +60,6 @@
         #define _WIN32_WINNT    0x0501
     #endif
 #endif // _WIN32
-
-#include <boost/config.hpp>
 
 #ifdef _MSC_VER
     #ifdef PION_EXPORTS

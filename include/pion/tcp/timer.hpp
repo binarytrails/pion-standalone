@@ -18,10 +18,13 @@
 #include <mutex>
 #include <pion/tcp/connection.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 namespace tcp {     // begin namespace tcp
-
 
 ///
 /// timer: helper class used to time-out TCP connections
@@ -78,8 +81,11 @@ private:
 /// shared pointer to a timer object
 typedef std::shared_ptr<timer>     timer_ptr;
 
-
 }   // end namespace tcp
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

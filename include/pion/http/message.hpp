@@ -21,8 +21,12 @@
 #include <regex>
 #include <pion/http/types.hpp>
 
-namespace pion {    // begin namespace pion
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
+namespace pion {    // begin namespace pion
 
 namespace tcp {
     // forward declaration for class used by send() and receive()
@@ -309,7 +313,7 @@ public:
         } else {
             std::string trimmed_length(i->second);
             pion::trim(trimmed_length);
-            m_content_length = std::stoull(trimmed_length);
+            m_content_length = (size_t)std::stoull(trimmed_length);
         }
     }
 
@@ -720,8 +724,11 @@ private:
     bool                            m_has_data_after_missing;
 };
 
-
 }   // end namespace http
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

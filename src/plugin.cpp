@@ -349,7 +349,7 @@ void plugin::close_dynamic_library(void *lib_handle)
     // So, please don't call FreeLibrary here unless you've been able to
     // reproduce and fix the crashing of the unit tests.
 
-    ()lib_handle;
+    (void)lib_handle;
     //FreeLibrary((HINSTANCE) lib_handle);
 #else
     dlclose(lib_handle);

@@ -14,6 +14,10 @@
 #include <pion/logger.hpp>
 #include <mutex>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 
@@ -82,6 +86,10 @@ private:
 
 
 }   // end namespace pion
+
+#ifdef _MSVC
+#  pragma warning( pop )
+#endif
 
 #endif
 

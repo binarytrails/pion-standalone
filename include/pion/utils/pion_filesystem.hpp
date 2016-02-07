@@ -20,6 +20,8 @@ namespace pion { namespace filesystem
 			path filename() const;
 			path parent_path() const;
 
+			void make_preferred();
+
 			path &operator/=( const path &i_comp );
 
 			path &normalize();

@@ -23,6 +23,10 @@
 #include <chrono>
 #include <cassert>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 
@@ -354,7 +358,10 @@ protected:
     uint32_t     m_next_service;
 };
 
-
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

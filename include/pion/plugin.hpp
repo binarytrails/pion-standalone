@@ -20,6 +20,10 @@
 #include <pion/utils/pion_filesystem.hpp>
 #include <pion/error.hpp>
 
+#ifdef PION_WIN32
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
 
 namespace pion {    // begin namespace pion
 
@@ -442,5 +446,9 @@ public:
 #endif
 
 }   // end namespace pion
+
+#ifdef PION_WIN32
+#  pragma warning( pop )
+#endif
 
 #endif

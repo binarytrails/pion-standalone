@@ -13,6 +13,7 @@
 #include <pion/config.hpp>
 #include <string>
 #include <locale>
+#include <cctype>
 #include <pion/utils/pion_string.hpp>
 #include <unordered_map>
 
@@ -48,7 +49,7 @@ namespace pion {    // begin namespace pion
             std::string s;
 			s.reserve( x.size() );
 			for ( auto c : x )
-				s.push_back( std::toupper( c ) );
+				s.push_back( (char)std::toupper( c ) );
             return std::hash<std::string>()(s);
         }
     };
