@@ -89,6 +89,7 @@ set(SRC_FILES
     ${PROJECT_SOURCE_DIR}/tcp_server.cpp
     ${PROJECT_SOURCE_DIR}/pion_filesystem.cpp
     ${PROJECT_SOURCE_DIR}/tcp_timer.cpp
+    ${PROJECT_SOURCE_DIR}/pion_filesystem.cpp
     )
 
 if (BUILD_SPDY)

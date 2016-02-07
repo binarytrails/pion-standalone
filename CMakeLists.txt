@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# pion:  a Boost C++ framework for building lightweight HTTP interfaces
+# pion:  a C++ framework for building lightweight HTTP interfaces
 # ---------------------------------------------------------------------
 # Copyright (C) 2013 Splunk Inc.  (https://github.com/splunk/pion)
 #
@@ -78,11 +78,11 @@ include_directories(${PROJECT_WIDE_INCLUDE})
 find_package(Threads REQUIRED)
 
 # TODO: need to handle this with option
-set(Boost_USE_MULTITHREADED ON)
+#set(Boost_USE_MULTITHREADED ON)
 #set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
+#set(Boost_USE_STATIC_RUNTIME OFF)
 
-find_package(Boost COMPONENTS thread system filesystem regex unit_test_framework REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 if (Boost_FOUND)
     # disable autolinking feature
     add_definitions(-DBOOST_ALL_NO_LIB)
@@ -113,6 +113,13 @@ find_package(OpenSSL)
 if(OPENSSL_FOUND)
     include_directories(${OPENSSL_INCLUDE_DIR})
     set(PION_HAVE_SSL 1)
+endif()
+
+find_package(ASIO)
+if(ASIO_FOUND)
+    include_directories(${ASIO_INCLUDE_DIR})
+else()
+	message(FATAL_ERROR "ASIO standalone is required to build Pion")
 endif()
 
 if(USE_LOG4CPLUS)

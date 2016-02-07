@@ -432,8 +432,6 @@ std::vector<std::string> split( const std::string &s, char sep )
 	return res;
 }
 
-#ifdef ASIO_STANDALONE
-
 bool indeterminate( const tribool &t )
 {
 	return t.v == 2;
@@ -470,7 +468,5 @@ void trim( std::string &s )
 	else
 		s.clear();
 }
-
-#endif
 
 }   // end namespace pion
