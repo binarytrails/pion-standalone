@@ -187,7 +187,7 @@ path system_complete( const path &i_path )
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> conversion;
 	return conversion.to_bytes( filesystem_path( i_path ) );
 #else
-	if ( i_path.string().empty() or i_path.string().front() == '/'; )
+	if ( i_path.string().empty() or i_path.string().front() == '/' )
 		return i_path; // already absolute
 	else
 	{

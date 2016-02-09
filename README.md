@@ -5,16 +5,10 @@ Fork of pion (https://github.com/splunk/pion.git) that does **not**
 requires boost at all.
 
  - feature complete
- - no need of boost
+ - no need of boost (except for unit tests)
  - requires C++11
  - requires asio standalone
- - tests still uses boost::test
-
-todo:
- - windows support
- - linux support
- - bsd support
- - cmake build
+ - cmake build only
 
 Original Readme follow:
 

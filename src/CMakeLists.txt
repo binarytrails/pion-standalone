@@ -9,6 +9,8 @@
 
 cmake_minimum_required(VERSION 2.8.10 FATAL_ERROR)
 
+cmake_policy(SET CMP0042 NEW)
+
 set(PROJECT_NAME pion)
 project(${PROJECT_NAME} CXX)
 
@@ -127,8 +129,6 @@ if(MSVC)
 endif()
 # build target
 add_library(${PROJECT_NAME} ${SRC_FILES} ${HDR_FILES})
-
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
 if(UNIX)
     target_link_libraries(${PROJECT_NAME} dl)
