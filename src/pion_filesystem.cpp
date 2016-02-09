@@ -3,6 +3,9 @@
 #include <pion/utils/pion_filesystem.hpp>
 
 #ifdef PION_WIN32
+#include <codecvt>
+#include <algorithm>
+#include <windows.h>
 #else
 #include <unistd.h>
 #include <sys/param.h>
@@ -29,15 +32,6 @@ const char all_separators[] = "\\/";
 const char preferred_separator = '/';
 const char all_separators[] = "/";
 #endif
-
-bool is_absolute( const pion::filesystem::path &i_path )
-{
-#ifdef PION_WIN32
-#error
-#else
-	return not i_path.string().empty() and i_path.string().front() == '/';
-#endif
-}
 
 template<class COND>
 std::vector<std::string> split_if( const std::string &s, COND &c )
@@ -116,7 +110,7 @@ path &path::operator/=( const path &i_comp )
 		return *this;
 	if ( ! is_separator( i_comp.string().front() ) )
 	{
-		if ( ! _path.empty() and
+		if ( ! _path.empty() &&
 #ifdef PION_WIN32
 				_path.back() != ':' &&
 #endif
@@ -140,15 +134,15 @@ path &path::normalize()
 #ifdef PION_WIN32
 	_path.clear();
 	if ( comps.empty() )
-		return;
-	if ( comps.size() == 1 and comps.front().back() == ':' )
+		return *this;
+	if ( comps.size() == 1 && comps.front().back() == ':' )
 	{
-		_path = comps.front() + '\\';
+		_path = comps.front() + preferred_separator;
 		return *this;
 	}
 #else
-	if ( _path.front() == '/' )
-		_path = '/';
+	if ( _path.front() == preferred_separator)
+		_path = preferred_separator;
 	else
 		_path.clear();
 #endif
@@ -159,7 +153,7 @@ path &path::normalize()
 	{
 		if ( *it == "." )
 			continue;
-		if ( (it+1) != comps.end() and *(it+1) == ".." )
+		if ( (it+1) != comps.end() && *(it+1) == ".." )
 		{
 			it += 2;
 			continue;
@@ -173,6 +167,13 @@ path &path::normalize()
 	return *this;
 }
 
+path &path::make_preferred()
+{
+#ifdef PION_WIN32
+	std::replace( _path.begin(), _path.end(), '/', preferred_separator );
+#endif
+	return *this;
+}
 path operator/( const path &i_path, const path &i_comp )
 {
 	path p( i_path );
@@ -183,10 +184,11 @@ path operator/( const path &i_path, const path &i_comp )
 path system_complete( const path &i_path )
 {
 #ifdef PION_WIN32
-#error GetFullPathNameW ?
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> conversion;
+	return conversion.to_bytes( filesystem_path( i_path ) );
 #else
-	if ( i_path.string().empty() or is_absolute(i_path) )
-		return i_path;
+	if ( i_path.string().empty() or i_path.string().front() == '/'; )
+		return i_path; // already absolute
 	else
 	{
 		char cwd[MAXPATHLEN];
@@ -200,7 +202,7 @@ path system_complete( const path &i_path )
 bool exists( const path &i_path )
 {
 #ifdef PION_WIN32
-#error
+	return GetFileAttributesW(filesystem_path(i_path).c_str()) != INVALID_FILE_ATTRIBUTES;
 #else
 	struct stat info;
 	return stat( i_path.string().c_str(), &info ) == 0;
@@ -210,7 +212,7 @@ bool exists( const path &i_path )
 bool is_directory( const path &i_path )
 {
 #ifdef PION_WIN32
-#error
+	return GetFileAttributesW(filesystem_path(i_path).c_str()) == FILE_ATTRIBUTE_DIRECTORY;
 #else
 	struct stat info;
 	return stat( i_path.string().c_str(), &info ) == 0 and ((info.st_mode&S_IFDIR)!=0);
@@ -220,7 +222,7 @@ bool is_directory( const path &i_path )
 bool is_regular( const path &i_path )
 {
 #ifdef PION_WIN32
-#error
+	return GetFileAttributesW(filesystem_path(i_path).c_str()) == FILE_ATTRIBUTE_NORMAL;
 #else
 	struct stat info;
 	return stat( i_path.string().c_str(), &info ) == 0 and ((info.st_mode&S_IFREG)!=0);
@@ -230,27 +232,50 @@ bool is_regular( const path &i_path )
 std::time_t last_write_time( const path &i_path )
 {
 #ifdef PION_WIN32
-#error
+	std::time_t res = -1;
+	auto h = CreateFileW(filesystem_path(i_path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr );
+	if (h != INVALID_HANDLE_VALUE)
+	{
+		FILETIME createTime, accessTime, writeTime;
+		if (GetFileTime(h, &createTime, &accessTime, &writeTime))
+		{
+			int64_t t = (static_cast<int64_t>(writeTime.dwHighDateTime) << 32)
+				+ writeTime.dwLowDateTime;
+			t -= 116444736000000000LL;
+			t /= 10000000;
+			res= static_cast<std::time_t>(t);
+		}
+		CloseHandle(h);
+	}
+	return res;
 #else
 	struct stat info;
-	return stat( i_path.string().c_str(), &info ) == 0 ? info.st_mtimespec.tv_sec : 0;
+	return stat( i_path.string().c_str(), &info ) == 0 ? info.st_mtimespec.tv_sec : -1;
 #endif
 }
 
-size_t file_size( const path &i_path )
+uint64_t file_size( const path &i_path )
 {
 #ifdef PION_WIN32
-#error
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+
+	if ( GetFileAttributesExW(filesystem_path(i_path).c_str(), GetFileExInfoStandard, &fad) &&
+				(fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
+	{
+		return (static_cast<uint64_t>(fad.nFileSizeHigh)
+			<< (sizeof(DWORD) * 8)) + fad.nFileSizeLow;
+	}
+	return static_cast<size_t>(-1);
 #else
 	struct stat info;
-	return stat( i_path.string().c_str(), &info ) == 0 ? info.st_size : 0;
+	return stat( i_path.string().c_str(), &info ) == 0 ? info.st_size : static_cast<uint64_t>(-1);
 #endif
 }
 
 std::string extension( const path &i_path )
 {
 	auto name = i_path.filename().string();
-	if ( name == "." or name == ".." )
+	if ( name == "." || name == ".." )
 		return std::string();
 	auto pos = name.rfind( '.' );
 	return pos == std::string::npos
@@ -260,7 +285,7 @@ std::string extension( const path &i_path )
 std::string basename( const path &i_path )
 {
 	auto name = i_path.filename().string();
-	if ( name == "." or name == ".." )
+	if ( name == "." || name == ".." )
 		return name;
 	auto pos = name.rfind( '.' );
 	return pos == std::string::npos
@@ -270,7 +295,7 @@ std::string basename( const path &i_path )
 void remove( const path &i_path )
 {
 #ifdef PION_WIN32
-#error
+	DeleteFileW(filesystem_path(i_path).c_str());
 #else
 	::unlink( i_path.string().c_str() );
 #endif
@@ -282,9 +307,22 @@ std::vector<filesystem::path> get_dir_content( const filesystem::path &i_path )
 {
 	std::vector<filesystem::path> dirlist;
 #ifdef PION_WIN32
-#error
+	WIN32_FIND_DATAW fdata;
+	auto dirpath = filesystem_path( i_path );
+	auto h = FindFirstFileW( dirpath.c_str(), &fdata );
+	if ( h != INVALID_HANDLE_VALUE )
+	{
+		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> conversion;
+		do
+		{
+			auto e = dirpath + L"\\" + fdata.cFileName;
+			dirlist.emplace_back( conversion.to_bytes( e ) );
+		}
+		while (FindNextFileW( h, &fdata ) != 0 );
+		FindClose( h );
+	}
 #else
-	auto dirpath = filesystem::system_complete(i_path);
+	auto dirpath = filesystem::system_complete( i_path );
 	auto dirp = ::opendir( dirpath.string().c_str() );
 	if ( dirp != nullptr )
 	{
@@ -302,7 +340,16 @@ std::vector<filesystem::path> get_dir_content( const filesystem::path &i_path )
 #ifdef PION_WIN32
 std::wstring filesystem_path( const filesystem::path &i_path )
 {
-#error
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> conversion;
+	auto p = conversion.from_bytes( i_path.string() );
+	std::replace( p.begin(), p.end(), L'/', L'\\' );
+
+	auto len = GetFullPathNameW( p.c_str(), 0, nullptr, nullptr );
+	if ( len == 0 )
+		return p;
+	std::wstring result( len, L' ' );
+	GetFullPathNameW( p.c_str(), len, (LPWSTR)result.data(), nullptr );
+	return result;
 }
 #else
 std::string filesystem_path( const filesystem::path &i_path )
@@ -311,10 +358,4 @@ std::string filesystem_path( const filesystem::path &i_path )
 }
 #endif
 
-}
-
-std::ostream &operator<<( std::ostream &ostr, const pion::filesystem::path &i_path )
-{
-	ostr << i_path.string();
-	return ostr;
 }

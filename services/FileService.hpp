@@ -83,7 +83,7 @@ public:
     inline bool hasFileContent() const { return static_cast<bool>(m_file_content); }
 
     /// returns size of the file's content
-    inline unsigned long getFileSize() const { return m_file_size; }
+    inline unsigned long getFileSize() const { return (unsigned long)m_file_size; }
 
     /// returns timestamp that the cached file was last modified (0 = cache disabled)
     inline std::time_t getLastModified() const { return m_last_modified; }

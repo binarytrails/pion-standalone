@@ -2,6 +2,7 @@
 #ifndef H_PION_EXCEPTION
 #define H_PION_EXCEPTION
 
+#include <pion/config.hpp>
 #include <memory>
 #include <string>
 #include <stdexcept>
@@ -46,7 +47,7 @@ typename T::value_type *get_error_info( const exception_base & )
 	return nullptr;
 }
 
-std::string diagnostic_information( const std::exception &ex );
+std::string PION_API diagnostic_information( const std::exception &ex );
 
 }
 
