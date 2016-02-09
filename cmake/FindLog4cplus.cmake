@@ -108,6 +108,14 @@ if(LOG4CPLUS_LIBRARY_DEBUG AND LOG4CPLUS_LIBRARY_RELEASE)
         debug ${LOG4CPLUS_LIBRARY_DEBUG}
         optimized ${LOG4CPLUS_LIBRARY_RELEASE}
         CACHE STRING "Log4cplus Libraries")
+elseif(LOG4CPLUS_LIBRARY_DEBUG)
+    set(LOG4CPLUS_LIBRARIES
+        debug ${LOG4CPLUS_LIBRARY_DEBUG}
+        CACHE STRING "Log4cplus Libraries")
+elseif(LOG4CPLUS_LIBRARY_RELEASE)
+    set(LOG4CPLUS_LIBRARIES
+        optimized ${LOG4CPLUS_LIBRARY_RELEASE}
+        CACHE STRING "Log4cplus Libraries")
 endif()
 
 include(FindPackageHandleStandardArgs)

@@ -125,7 +125,7 @@ add_definitions(-DASIO_STANDALONE)
 
 
 if(USE_LOG4CPLUS)
-    set(Log4Cplus_USE_STATIC_LIBS 1)
+    set(Log4Cplus_USE_STATIC_LIBS 0)
     find_package(Log4cplus)
     if (LOG4CPLUS_FOUND)
         include_directories(${LOG4CPLUS_INCLUDE_DIR})
