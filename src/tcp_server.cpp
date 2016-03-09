@@ -110,6 +110,41 @@ void server::start()
     }
 }
 
+#ifndef PION_WIN32
+void server::start( int socket )
+{
+    // lock mutex for thread safety
+    std::unique_lock<std::mutex> server_lock(m_mutex);
+
+    if (! m_is_listening) {
+        PION_LOG_INFO(m_logger, "Starting server on port " << get_port());
+
+        before_starting();
+
+        // configure the acceptor service
+        try {
+            // get admin permissions in case we're binding to a privileged port
+            //pion::admin_rights use_admin_rights(get_port() > 0 && get_port() < 1024);
+            
+            m_tcp_acceptor.assign( m_endpoint.protocol(), socket );
+
+        } catch (std::exception& e) {
+            PION_LOG_ERROR(m_logger, "Unable to bind to port " << get_port() << ": " << e.what());
+            throw;
+        }
+
+        m_is_listening = true;
+
+        // unlock the mutex since listen() requires its own lock
+        server_lock.unlock();
+        listen();
+
+        // notify the thread scheduler that we need it now
+        m_active_scheduler.add_active_user();
+    }
+}
+#endif
+
 void server::stop(bool wait_until_finished)
 {
     // lock mutex for thread safety

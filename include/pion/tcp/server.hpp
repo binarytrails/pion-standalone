@@ -42,6 +42,11 @@ public:
     /// starts listening for new connections
     void start();
 
+#ifndef PION_WIN32
+    /// starts listening for new connections using raw socket
+    void start( int socket );
+#endif
+
     /**
      * stops listening for new connections
      *
