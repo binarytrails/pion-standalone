@@ -250,7 +250,7 @@ std::time_t last_write_time( const path &i_path )
 	return res;
 #else
 	struct stat info;
-	return stat( i_path.string().c_str(), &info ) == 0 ? info.st_mtimespec.tv_sec : -1;
+	return stat( i_path.string().c_str(), &info ) == 0 ? info.st_mtim.tv_sec : -1;
 #endif
 }
 
